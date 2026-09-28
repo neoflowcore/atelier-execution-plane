@@ -1,0 +1,34 @@
+{
+  "schemaId": "RUNTIME_REV52_DEPENDENCY_LOCK_V1",
+  "schemaVersion": "1",
+  "runtimeRepository": "neoflowcore/atelier-runtime",
+  "runtimeSourceHead": "785ae47c1abc4363396b0805a2e43783132465bb",
+  "runtimeSourceTree": "487e701c880ecc49c5a95ba66f12b1cb2c6074fc",
+  "runtimeInterfaceVersion": "5.2-FROZEN",
+  "runtimeInterfaceDigest": "d6b22817a194b864611118e36d19bb1fda0eeca6b8a60eda31bec82b5bf622c4",
+  "runtimeDevelopmentSealSha256": "9eca75105d511fd910749a7884664fdd89ca181de69f0cde3a449f0f91e10114",
+  "runtimeHandoffDigest": "eb122a65afc92d589b1af2eb923167cd47d144e1105669493b117249beefcbf8",
+  "artifactMirror": [
+    {"path":"contracts/runtime52/R52_RUNTIME_DEVELOPMENT_SEAL_v001.json","gitBlobSha":"51c5569d0e8be96730c6b3156e928176f8f05999","sha256":"3e9b8500fcfc5c5fbfb4ef50fa8ebfb9b5946e4bd0f69981db2060bd81da6af8"},
+    {"path":"contracts/runtime52/R52_RUNTIME_INTERFACE_FREEZE_v001.json","gitBlobSha":"ed29abf6074287f9eb5e34424aff06518e856c5d","sha256":"a4cc09ac6241a7376fe0f2719515a6a3e4aa64d301ddc8e88369f62199b71d73"},
+    {"path":"contracts/runtime52/RUNTIME_REV52_HANDOFF_BUNDLE_V1.json","gitBlobSha":"803bf3b24fa97dc130c4ac98f8fbebd2195f44d8","sha256":"3b44cd128d038d1f17873ce9fa7e0b1e4d09101e83bd81941f34b892b6e92e8f"}
+  ],
+  "contractManifest": [
+    {"name":"AuthEndgameEligibility","version":"1","path":"runtime/rev52/source-progress-resolver-v1.mjs","blob":"5f4ba4491a3c8e072ce0f7ab67cbdf9632754b7f"},
+    {"name":"BillingResidueReceipt","version":"3","path":"runtime/rev52/billing-firewall-v3.mjs","blob":"9527cd86c5d39ba1f6f32afd2333aea58cfd51da"},
+    {"name":"ContinuationDecision","version":"1","path":"runtime/rev51/continuation-decision-v1.mjs","blob":"dc7e66add3b32fc99d9493b361c2170f4e760eec"},
+    {"name":"EvidenceReceiptCompatibility","version":"1","path":"runtime/rev51/content-identity-evidence-reuse-v1.mjs","blob":"8b1611f4c1e52c0e6a7a1b7c18729cc62346dded"},
+    {"name":"EvidenceReceiptCompatibility","version":"1","path":"runtime/rev51/evidence-validity-graph-v1.mjs","blob":"2041238cfd34066399974fa7cd03049363a41a9e"},
+    {"name":"ExecutionSurface","version":"1","path":"runtime/rev52/execution-surface-hot-reattach-v1.mjs","blob":"e5aeb0c54ceafa2966bbff040d6d2867ffaaef44"},
+    {"name":"MutationAuthorityEnvelope","version":"1","path":"runtime/rev52/source-mutation-authority-v1.mjs","blob":"3176b13f953a1449e4ef75d62fd32d5d504db26d"},
+    {"name":"NextLegalActionResolver","version":"1","path":"runtime/rev52/source-progress-resolver-v1.mjs","blob":"5f4ba4491a3c8e072ce0f7ab67cbdf9632754b7f"},
+    {"name":"ProjectIdentityInput","version":"1","path":"runtime/rev51/project-identity-plan-binding-v1.mjs","blob":"ad24e9d5f08fc4b28a566b62aa51fb6b48dd0620"},
+    {"name":"ProjectRunStateV2","version":"2","path":"runtime/rev52/project-run-state-v2.mjs","blob":"8ef98bc8330e8c36b98bbe45f8a5e779c583c2d9"},
+    {"name":"ProjectSourceManifestInput","version":"1","path":"runtime/rev51/project-identity-plan-binding-v1.mjs","blob":"ad24e9d5f08fc4b28a566b62aa51fb6b48dd0620"},
+    {"name":"ProviderControlAdapter","version":"1","path":"runtime/rev52/provider-control-layer-v1.mjs","blob":"1ab7e2e60b9d4450d4384822dc9a22d6d63a9957"}
+  ],
+  "schemaSha256": ["a4cc09ac6241a7376fe0f2719515a6a3e4aa64d301ddc8e88369f62199b71d73"],
+  "dependencyState": "LOCKED",
+  "runtimeSourceMutationAllowed": false,
+  "runtimeInterfaceRedefinitionAllowed": false
+}

@@ -1,0 +1,27 @@
+{
+  "schemaId": "EP52_BASELINE_BINDING_V1",
+  "masterPlan": {
+    "file": "ATELIER_REV52_FULL_REBUILD_EXECUTION_PLANE_PILOTE_MASTER_PLAN_v004_FULL_FINAL_CLOSED_20260929.md",
+    "sha256": "e89db1bc80c2723ff1f02b7df4ad1035bbea01bd61d9df4b54e6faea48827488",
+    "status": "FULL_FINAL_SEALED_PLANNING_CLOSED"
+  },
+  "masterPlanValidation": {
+    "file": "ATELIER_REV52_v004_FULL_FINAL_CLOSED_VALIDATION_20260929.txt",
+    "sha256": "d2249a1d625c0356517e1d9ee9c85a886eb9ecb3ff7fc959a8c4bc4ed6be08bb",
+    "status": "PASS"
+  },
+  "controlPolicy": {
+    "file": "UNIVERSAL_PROJECT_ONE_SHOT_CONTROL_POLICY_v024_GENERIC_FINAL_SEALED_20260928.md",
+    "sha256": "74874548f27bb60ba2c202d482789b1370e701a83b93416255acc3c6fadc9329"
+  },
+  "historicalRuntimeMain": {
+    "head": "066418b37e949531e9f1da0fa0ff2f07dd3f9c03",
+    "tree": "95417a322ae03652bdf417c31efb72219a0d5e44"
+  },
+  "executionPlaneRepository": "neoflowcore/atelier-execution-plane",
+  "executionPlaneRepositoryObserved": "PRESENT_2026-09-29",
+  "executionPlaneRepositoryId": "1393795932",
+  "executionPlaneBootstrapCommit": "c4ff78f0ddf84af9c48d5352e6ede1ff6a5be0f0",
+  "developmentBranch": "ep52-h1-recovery",
+  "normalPath": "CONTINUE_PERSISTENT_DEVELOPMENT_BRANCH"
+}
