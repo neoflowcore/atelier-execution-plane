@@ -20,6 +20,10 @@
     {"name":"ProviderControlAdapter","version":"1","bindings":[{"path":"runtime/rev52/provider-control-layer-v1.mjs","blob":"1ab7e2e60b9d4450d4384822dc9a22d6d63a9957"}]}
   ],
   "backwardCompatibility": "PASS_WITH_MIGRATION_MANIFEST",
-  "migrationManifest": ["legacy NEXT=AUTH/BOUND -> DEFERRED_AUTH_NEXT + full authorized-plan rescan","Rev5.1 project identity/source manifest remain legacy migration evidence only","Rev5.1 provider/capability/evidence contracts reused where blob-bound above"],
+  "migrationManifest": [
+    "legacy NEXT=AUTH/BOUND -> DEFERRED_AUTH_NEXT + full authorized-plan rescan",
+    "Rev5.1 project identity/source manifest remain legacy migration evidence only",
+    "Rev5.1 provider/capability/evidence contracts reused where blob-bound above"
+  ],
   "RUNTIME_INTERFACE_DIGEST": "d6b22817a194b864611118e36d19bb1fda0eeca6b8a60eda31bec82b5bf622c4"
 }
