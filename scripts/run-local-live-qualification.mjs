@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, access, open } from "node:fs/promises";
+import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { createLocalProviderV1 } from "../providers/local/index.mjs";
 import { createWorkerAgentV1 } from "../worker/agent/index.mjs";
@@ -54,6 +55,69 @@ async function runOnFreshLocalWorker(jobDef,index=0){
   return {status:"PASS",receipt:{jobId:jobDef.id,exitCode:result.exitCode,durationMs:result.durationMs,caps:{OS_CLASS:caps.OS_CLASS,ARCH_CLASS:caps.ARCH_CLASS,NODE_VERSION:caps.NODE_VERSION,DISK_FREE_MIB:caps.DISK_FREE_MIB},rawSecretPersisted:false,durableCredentialPersisted:false,inventoryAfterCount:0},artifacts:[]};
 }
 
+async function findChromium(){
+  const candidates=[
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser"
+  ];
+  for(const path of candidates){
+    try{await access(path);return path;}catch{}
+  }
+  throw new Error("CHROMIUM_BINARY_NOT_AVAILABLE_NO_INSTALL_FALLBACK");
+}
+
+async function runChromiumDiskWorkload(){
+  if(process.platform!=="linux"||process.arch!=="x64") throw new Error("CHROMIUM_WORKLOAD_REQUIRES_LINUX_X64");
+  const provider=createLocalProviderV1();
+  const executionId=`ep52-chromium-${runId}`;
+  const resource=await provider.create({executionId,leaseId:`lease-chromium-${runId}`});
+  const agent=createWorkerAgentV1({workerId:"worker-chromium",providerClass:"LOCAL",environmentIdentity:"github-hosted-linux-x64"});
+  let result,caps,sanitize,inventoryAfter,browserPath,sparseSizeBytes=0;
+  try{
+    caps=await agent.prepare({path:resource.path});
+    if(caps.OS_CLASS!=="linux"||caps.ARCH_CLASS!=="x64") throw new Error("CHROMIUM_CAPABILITY_PLATFORM_MISMATCH");
+    if(caps.DISK_FREE_MIB<10240) throw new Error("CHROMIUM_LARGE_DISK_CAPABILITY_UNSATISFIED");
+    const sparsePath=join(resource.path,"ep52-large-disk-fixture.bin");
+    const fh=await open(sparsePath,"w");
+    try{await fh.truncate(512*1024*1024);}finally{await fh.close();}
+    sparseSizeBytes=512*1024*1024;
+    browserPath=await findChromium();
+    const payload={
+      executionId,
+      attemptId:"attempt-chromium",
+      fenceToken:1,
+      workerJobSha256:h("worker-job:chromium"),
+      executionPlanHash:h("execution-plan:chromium"),
+      sourceIdentity:{kind:"GIT_SHA",value:head},
+      entrypointSpec:{
+        command:browserPath,
+        args:["--headless=new","--no-sandbox","--disable-gpu","--dump-dom","data:text/html,<html><head><title>EP52_CHROMIUM_PASS</title></head><body>EP52_CHROMIUM_PASS</body></html>"]
+      },
+      artifactPolicy:{mode:"CONTENT_ADDRESSED"},
+      cleanupPolicy:{mode:"ALWAYS"}
+    };
+    result=await agent.execute(payload);
+    sanitize=agent.sanitize();
+    agent.teardown();
+  } finally {
+    await provider.destroy(resource.resourceId);
+    inventoryAfter=await provider.inventory();
+  }
+  if(result?.exitCode!==0||!result.stdout.includes("EP52_CHROMIUM_PASS")) throw new Error("CHROMIUM_HEADLESS_EXECUTION_FAILED");
+  if(sanitize?.rawSecretPersisted!==false||sanitize?.durableCredentialPersisted!==false) throw new Error("CHROMIUM_WORKER_SECRET_RESIDUE");
+  if(inventoryAfter.length!==0) throw new Error("CHROMIUM_WORKER_RESOURCE_RESIDUE");
+  return {
+    status:"PASS",
+    browserPath,
+    sparseSizeBytes,
+    caps:{OS_CLASS:caps.OS_CLASS,ARCH_CLASS:caps.ARCH_CLASS,DISK_FREE_MIB:caps.DISK_FREE_MIB,NODE_VERSION:caps.NODE_VERSION},
+    exitCode:result.exitCode,
+    inventoryAfterCount:0
+  };
+}
+
 const direct=job("local-direct", 'process.stdout.write("EP52_LOCAL_DIRECT_PASS")');
 const directReceipt=await runOnFreshLocalWorker(direct,0);
 
@@ -80,6 +144,8 @@ const multi=await runMultiWorkerDagSimulationV1({
 });
 if(multi.status!=="PASS"||multi.peakConcurrency<2||multi.joins.some(j=>j.status!=="PASS")) throw new Error("MULTI_WORKER_LIVE_LOCAL_FAILED");
 
+const chromiumReceipt=await runChromiumDiskWorkload();
+
 const refTrace=[
   {op:"CREATE",state:"CREATED",accepted:true},
   {op:"EXECUTE",state:"PASS",effect:"LOCAL_DIRECT_WORKER",accepted:true},
@@ -90,7 +156,7 @@ if(localShadow.status!=="PASS") throw new Error("LOCAL_SHADOW_SEMANTIC_COMPARATO
 
 const receipt={
   schemaId:"EP52_LOCAL_LIVE_QUALIFICATION_RECEIPT_V1",
-  version:"1",
+  version:"2",
   repository:process.env.GITHUB_REPOSITORY??null,
   runId,
   sourceHead:head,
@@ -104,14 +170,15 @@ const receipt={
   },
   P21:{
     LONG_HEAVY_COMPUTE_LOCAL:"PASS",
+    LARGE_DISK_LINUX_X64_CHROMIUM_CI:"PASS",
     MULTI_WORKER_DEPENDENCY_JOIN_LOCAL:"PASS",
     LOCAL_SHADOW_SEMANTIC_COMPARATOR:"PASS",
-    LARGE_DISK_LINUX_X64_CHROMIUM_CI:"PENDING_LIVE",
     VMWARE_LOCAL_REPEATABILITY:"DEFERRED_PROVIDER_LIVE_WORK",
     PROVIDER_SHADOW_CANARY:"PENDING_PROVIDER_LIVE"
   },
   directWorker:directReceipt,
   heavyCompute:heavyReceipt,
+  chromium:chromiumReceipt,
   multiWorker:{status:multi.status,peakConcurrency:multi.peakConcurrency,maxConcurrency:multi.maxConcurrency,joins:multi.joins,backpressureRespected:multi.backpressureRespected},
   cleanup:{LOCAL_RESOURCE_INVENTORY_AFTER:0,ACTIVE_PAID_COMPUTE:0,ORPHANED_BILLABLE_RESOURCE:0,BILLABLE_RESIDUE:0},
   status:"PASS_PARTIAL_LIVE",
@@ -120,4 +187,4 @@ const receipt={
 };
 await mkdir("artifacts/ep52/local-live",{recursive:true});
 await writeFile("artifacts/ep52/local-live/receipt.json",JSON.stringify(receipt,null,2)+"\n");
-console.log(`EP52_LOCAL_LIVE=PASS_PARTIAL run=${runId} head=${head} peak=${multi.peakConcurrency}`);
+console.log(`EP52_LOCAL_LIVE=PASS_PARTIAL run=${runId} head=${head} peak=${multi.peakConcurrency} chromium=PASS`);
