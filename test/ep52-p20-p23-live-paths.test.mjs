@@ -1,0 +1,19 @@
+import test from "node:test";import assert from "node:assert/strict";
+import {compileVmwareLiveBridgeV1,evaluateVmwareLiveBridgeReadinessV1} from "../providers/vmware/live-bridge-v1.mjs";
+import {compileDigitalOceanApiExecutionV1,evaluateDigitalOceanApiPreflightV1} from "../providers/digitalocean/api-execution-v1.mjs";
+import {compileGithubJitLiveExecutionV1,evaluateGithubJitLivePreflightV1} from "../transports/github-self-hosted-jit/live-execution-v1.mjs";
+import {compileProviderTransportLiveMatrixV1} from "../live/provider-transport-matrix-v1.mjs";
+import {compileProviderCleanupReceiptV1,aggregateCleanupReceiptsV1} from "../billing/provider-cleanup-receipt-v1.mjs";
+import {compileInterfaceFreezeInputManifestV1,EP52_FREEZE_COMPONENT_PATHS} from "../seal/interface-freeze-input-v1.mjs";
+
+test("VMware live bridge defers only live binding and never falls back to manual SSH",()=>{const b=compileVmwareLiveBridgeV1({providerTarget:"vcenter-evening",executionSurfaceId:"vmware-existing-1",mode:"TRUSTED_EXECUTOR",connectionState:"DEFERRED_LIVE_BINDING"});const r=evaluateVmwareLiveBridgeReadinessV1(b);assert.equal(r.status,"DEFERRED_PROVIDER_LIVE_WORK");assert.equal(r.sourceWorkBlocked,false);assert.equal(r.manualSshRequired,false);assert.equal(b.newPaidResourceAllowed,false);assert.equal(b.manualSshNormalPath,false)});
+
+test("DigitalOcean API contract is fail-closed until connection inventory and pricing are fresh",()=>{const c=compileDigitalOceanApiExecutionV1({executionId:"ep52-do-1",tokenReference:"plugin:DigitalOcean",costCapMilliUsd:100,ttlSeconds:1800});assert.equal(c.maxConcurrentPaidResources,1);assert.equal(c.tokenMaterialPersisted,false);assert.equal(evaluateDigitalOceanApiPreflightV1({contract:c,inventoryKnown:false,pricingKnown:false,connectionState:"NOT_CONNECTED"}).newResourceCreateAllowed,false)});
+
+test("GitHub JIT contract forbids device login and long-lived worker credentials",()=>{const c=compileGithubJitLiveExecutionV1({executionId:"jit-1",repository:"neoflowcore/atelier-execution-plane",sourceSha:"a".repeat(40),workflowRef:"refs/heads/ep52-h1-recovery"});assert.equal(c.workerDeviceLoginAllowed,false);assert.equal(c.longLivedCredentialOnWorkerAllowed,false);assert.equal(evaluateGithubJitLivePreflightV1({contract:c,capacityReady:false,authAvailable:true}).ready,false)});
+
+test("P20 live matrix remains pending until all five real combinations pass",()=>{const m=compileProviderTransportLiveMatrixV1([{provider:"LOCAL",transport:"DIRECT_WORKER",status:"PASS",evidenceRef:"local:test"}]);assert.equal(m.providerStatus.LOCAL,"PASS");assert.equal(m.providerStatus.VMWARE,"PENDING");assert.equal(m.finalLiveGatePass,false);assert.equal(m.WORKER_DEVICE_LOGIN,0);assert.equal(m.LONG_LIVED_PROVIDER_OR_GITHUB_CREDENTIAL_ON_WORKER,0)});
+
+test("P22 cleanup receipt requires every readback and residue zero",()=>{const base={provider:"DIGITALOCEAN",resourceId:"1",DELETE_OR_TERMINATE:true,DELETE_READBACK:true,EPHEMERAL_CREDENTIAL_DELETE:true,EPHEMERAL_CREDENTIAL_ABSENCE_READBACK:true,CHILD_BILLABLE_ARTIFACT_SCAN:true,PROVIDER_INVENTORY_READBACK:true,RETENTION_CLASS_RECONCILIATION:true,ACTIVE_PAID_COMPUTE:0,ORPHANED_BILLABLE_RESOURCE:0,BILLABLE_RESIDUE:0};const r=compileProviderCleanupReceiptV1(base);assert.equal(r.status,"PASS");assert.equal(aggregateCleanupReceiptsV1([r]).status,"PASS");assert.equal(compileProviderCleanupReceiptV1({...base,DELETE_READBACK:false}).status,"FAIL")});
+
+test("P23 freeze input manifest pins every required interface path by blob identity",()=>{const blobs=Object.fromEntries(Object.values(EP52_FREEZE_COMPONENT_PATHS).map((p,i)=>[p,(i+1).toString(16).padStart(40,"0")]));const m=compileInterfaceFreezeInputManifestV1(blobs);assert.equal(Object.keys(m.components).length,16);assert.equal(m.liveQualificationRequiredBeforeFinalFreeze,true)});
