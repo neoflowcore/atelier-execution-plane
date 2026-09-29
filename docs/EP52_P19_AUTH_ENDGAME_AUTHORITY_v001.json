@@ -1,0 +1,51 @@
+{
+  "schemaId": "EP52_P19_AUTH_ENDGAME_AUTHORITY_V1",
+  "status": "AUTHORITY_APPROVED_BINDING_PENDING",
+  "explicitUserApproval": true,
+  "approvalScope": "MINIMUM_COST_LIVE_QUALIFICATION_ONLY",
+  "providers": ["DIGITALOCEAN", "VMWARE", "GITHUB"],
+  "connectionState": {
+    "DIGITALOCEAN": "NOT_CONNECTED",
+    "VMWARE": "UNRESOLVED_EXISTING_SURFACE",
+    "GITHUB": "CONNECTED_EXISTING"
+  },
+  "authInteractionBudget": 1,
+  "authInteractionConsumed": 0,
+  "perProviderMicroAuth": false,
+  "rawSecretChatPath": false,
+  "reuseExistingValidAuthFirst": true,
+  "costEnvelope": {
+    "currency": "USD",
+    "maxConcurrentPaidResources": 1,
+    "maxPaidComputeMilliUsdPerResource": 100,
+    "maxPaidComputeMilliUsdTotal": 500,
+    "maxTtlSeconds": 1800,
+    "selectMinimumEligibleDigitalOceanSize": true,
+    "additionalBillableResourcesAllowed": false,
+    "backupsAllowed": false,
+    "blockStorageAllowed": false,
+    "reservedIpAllowed": false,
+    "loadBalancerAllowed": false,
+    "databaseAllowed": false
+  },
+  "digitalOcean": {
+    "officialOrFirstPartySurfaceRequired": true,
+    "minimumEligibleSizeRequired": true,
+    "createOnlyAfterFreshInventoryAndPricingReadback": true,
+    "deleteOrTerminateRequired": true,
+    "deleteReadbackRequired": true,
+    "childBillableArtifactScanRequired": true,
+    "residueZeroRequired": true
+  },
+  "vmware": {
+    "existingInfrastructureOnly": true,
+    "newPaidResourceAllowed": false,
+    "manualSshNormalPath": false,
+    "trustedExecutorOrOfficialApiRequired": true
+  },
+  "github": {
+    "reuseExistingAuth": true,
+    "workerDeviceLoginAllowed": false,
+    "longLivedCredentialOnWorkerAllowed": false
+  }
+}
