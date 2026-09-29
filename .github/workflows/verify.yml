@@ -6,10 +6,21 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.13.0'
       - run: npm run verify
+      - name: Run EP52 Local live qualification
+        if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/run-local-live-qualification.mjs
+      - name: Upload EP52 Local live evidence
+        if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-local-live-${{ github.sha }}
+          path: artifacts/ep52/local-live/receipt.json
+          if-no-files-found: error
+          retention-days: 7
