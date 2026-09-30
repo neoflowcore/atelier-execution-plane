@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, writeFile, access, open } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { createLocalProviderV1 } from "../providers/local/index.mjs";
 import { createWorkerAgentV1 } from "../worker/agent/index.mjs";
@@ -74,7 +75,7 @@ async function runChromiumDiskWorkload(){
   const executionId=`ep52-chromium-${runId}`;
   const resource=await provider.create({executionId,leaseId:`lease-chromium-${runId}`});
   const agent=createWorkerAgentV1({workerId:"worker-chromium",providerClass:"LOCAL",environmentIdentity:"github-hosted-linux-x64"});
-  let result,caps,sanitize,inventoryAfter,browserPath,sparseSizeBytes=0;
+  let result,caps,sanitize,inventoryAfter,browserPath,sparseSizeBytes=0,fixtureUrl=null;
   try{
     caps=await agent.prepare({path:resource.path});
     if(caps.OS_CLASS!=="linux"||caps.ARCH_CLASS!=="x64") throw new Error("CHROMIUM_CAPABILITY_PLATFORM_MISMATCH");
@@ -83,7 +84,12 @@ async function runChromiumDiskWorkload(){
     const fh=await open(sparsePath,"w");
     try{await fh.truncate(512*1024*1024);}finally{await fh.close();}
     sparseSizeBytes=512*1024*1024;
+
+    const fixturePath=join(resource.path,"ep52-chromium-fixture.html");
+    await writeFile(fixturePath,"<!doctype html><html><head><meta charset=\"utf-8\"><title>EP52_CHROMIUM_PASS</title></head><body>EP52_CHROMIUM_PASS</body></html>","utf8");
+    fixtureUrl=pathToFileURL(fixturePath).href;
     browserPath=await findChromium();
+
     const payload={
       executionId,
       attemptId:"attempt-chromium",
@@ -93,7 +99,20 @@ async function runChromiumDiskWorkload(){
       sourceIdentity:{kind:"GIT_SHA",value:head},
       entrypointSpec:{
         command:browserPath,
-        args:["--headless=new","--no-sandbox","--disable-gpu","--dump-dom","data:text/html,<html><head><title>EP52_CHROMIUM_PASS</title></head><body>EP52_CHROMIUM_PASS</body></html>"]
+        args:[
+          "--headless=new",
+          "--no-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-background-networking",
+          "--disable-component-update",
+          "--disable-default-apps",
+          "--disable-extensions",
+          "--no-first-run",
+          "--no-default-browser-check",
+          "--dump-dom",
+          fixtureUrl
+        ]
       },
       artifactPolicy:{mode:"CONTENT_ADDRESSED"},
       cleanupPolicy:{mode:"ALWAYS"}
@@ -105,15 +124,29 @@ async function runChromiumDiskWorkload(){
     await provider.destroy(resource.resourceId);
     inventoryAfter=await provider.inventory();
   }
-  if(result?.exitCode!==0||!result.stdout.includes("EP52_CHROMIUM_PASS")) throw new Error("CHROMIUM_HEADLESS_EXECUTION_FAILED");
+  if(result?.exitCode!==0||!result.stdout.includes("EP52_CHROMIUM_PASS")){
+    const diagnostic={
+      exitCode:result?.exitCode??null,
+      signal:result?.signal??null,
+      outputLimitExceeded:result?.outputLimitExceeded??null,
+      durationMs:result?.durationMs??null,
+      stdout:(result?.stdout??"").slice(0,512),
+      stderr:(result?.stderr??"").slice(0,1024),
+      browserPath,
+      fixtureUrl
+    };
+    throw new Error(`CHROMIUM_HEADLESS_EXECUTION_FAILED:${JSON.stringify(diagnostic)}`);
+  }
   if(sanitize?.rawSecretPersisted!==false||sanitize?.durableCredentialPersisted!==false) throw new Error("CHROMIUM_WORKER_SECRET_RESIDUE");
   if(inventoryAfter.length!==0) throw new Error("CHROMIUM_WORKER_RESOURCE_RESIDUE");
   return {
     status:"PASS",
     browserPath,
+    fixtureUrl,
     sparseSizeBytes,
     caps:{OS_CLASS:caps.OS_CLASS,ARCH_CLASS:caps.ARCH_CLASS,DISK_FREE_MIB:caps.DISK_FREE_MIB,NODE_VERSION:caps.NODE_VERSION},
     exitCode:result.exitCode,
+    durationMs:result.durationMs,
     inventoryAfterCount:0
   };
 }
@@ -156,7 +189,7 @@ if(localShadow.status!=="PASS") throw new Error("LOCAL_SHADOW_SEMANTIC_COMPARATO
 
 const receipt={
   schemaId:"EP52_LOCAL_LIVE_QUALIFICATION_RECEIPT_V1",
-  version:"2",
+  version:"3",
   repository:process.env.GITHUB_REPOSITORY??null,
   runId,
   sourceHead:head,
