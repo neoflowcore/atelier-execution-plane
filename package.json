@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test",
     "verify:runtime-lock": "node scripts/verify-runtime-lock.mjs",
+    "verify:live-authority-lock": "node scripts/verify-live-authority-lock.mjs",
     "security:lint": "node scripts/security-lint.mjs",
-    "verify": "npm run verify:runtime-lock && npm run security:lint && npm test"
+    "verify": "npm run verify:runtime-lock && npm run verify:live-authority-lock && npm run security:lint && npm test"
   }
 }
