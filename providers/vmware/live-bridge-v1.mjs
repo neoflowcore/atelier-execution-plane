@@ -26,14 +26,29 @@ export function compileVmwareLiveBridgeV1(input={}){
   };
   return Object.freeze({...body,bridgeDigest:sha(body)});
 }
-export function evaluateVmwareLiveBridgeReadinessV1(bridge){
+export function evaluateVmwareLiveBridgeReadinessV1(bridge,input={}){
   if(!bridge||bridge.schemaId!=="VMWARE_LIVE_BRIDGE_V1") throw new Error("VMWARE_LIVE_BRIDGE_REQUIRED");
   const connected=bridge.connectionState==="CONNECTED";
+  const targetOk=input.targetIdentityReadback==="PASS";
+  const inventoryOk=input.inventoryReadback==="PASS";
+  const readyOk=input.readyAttestation==="PASS";
+  const cleanupKnown=input.cleanupState==="ZERO"||input.cleanupState==="CLEAN";
+  const allowedMode=MODES.has(bridge.mode);
+  const ready=connected&&targetOk&&inventoryOk&&readyOk&&cleanupKnown&&allowedMode;
+  const blockers=[];
+  if(!connected) blockers.push("SURFACE_NOT_CONNECTED");
+  if(!allowedMode) blockers.push("SURFACE_MODE_NOT_ALLOWED");
+  if(!targetOk) blockers.push("TARGET_IDENTITY_READBACK_NOT_PASS");
+  if(!inventoryOk) blockers.push("INVENTORY_READBACK_NOT_PASS");
+  if(!readyOk) blockers.push("READY_ATTESTATION_NOT_PASS");
+  if(!cleanupKnown) blockers.push("PRIOR_CLEANUP_STATE_UNKNOWN");
   return Object.freeze({
-    ready:connected,
-    status:connected?"READY_FOR_LIVE_QUALIFICATION":"DEFERRED_PROVIDER_LIVE_WORK",
+    ready,
+    status:ready?"READY_FOR_LIVE_QUALIFICATION":"DEFERRED_PROVIDER_LIVE_WORK",
     manualSshRequired:false,
     sourceWorkBlocked:false,
-    liveEvidencePending:!connected
+    liveEvidencePending:!ready,
+    newResourceCreateAllowed:false,
+    blockers
   });
 }
