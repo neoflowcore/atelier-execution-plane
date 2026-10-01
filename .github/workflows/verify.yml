@@ -25,6 +25,9 @@ jobs:
       - name: Generate post-seal compatibility resume plan
         if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
         run: node scripts/generate-post-seal-resume-plan.mjs
+      - name: Generate exact source closure v2
+        if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-final-source-closure-v2.mjs
       - name: Upload EP52 pre-final evidence
         if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -35,5 +38,6 @@ jobs:
             docs/EP52_P23_PRE_FREEZE_SOURCE_MANIFEST_v001.json
             artifacts/ep52/deferred-provider/resume-kit.json
             artifacts/ep52/post-seal/resume-plan.json
+            artifacts/ep52/source-closure/final-source-closure-v2.json
           if-no-files-found: error
           retention-days: 7
