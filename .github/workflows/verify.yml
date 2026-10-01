@@ -13,8 +13,12 @@ jobs:
         with:
           node-version: '22.13.0'
       - run: npm run verify
-      - name: Run EP52 Local live qualification
+      - name: Evaluate Local live evidence reuse
+        id: local_live_reuse
         if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/check-local-live-evidence-reuse.mjs
+      - name: Run EP52 Local live qualification
+        if: ${{ (github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery') && steps.local_live_reuse.outputs.run_live == 'true' }}
         run: node scripts/run-local-live-qualification.mjs
       - name: Generate EP52 P23 pre-freeze source manifest
         if: ${{ github.ref_name == 'ep52-h1-recovery' || github.head_ref == 'ep52-h1-recovery' }}
@@ -35,6 +39,7 @@ jobs:
           name: ep52-pre-final-${{ github.sha }}
           path: |
             artifacts/ep52/local-live/receipt.json
+            artifacts/ep52/local-live-reuse/receipt.json
             docs/EP52_P23_PRE_FREEZE_SOURCE_MANIFEST_v001.json
             artifacts/ep52/deferred-provider/resume-kit.json
             artifacts/ep52/post-seal/resume-plan.json
