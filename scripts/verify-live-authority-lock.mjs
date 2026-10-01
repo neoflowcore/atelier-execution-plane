@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {resolve} from "node:path";
-import {MAX_COST_CAP_MILLI_USD,MAX_TTL_SECONDS,DIGITALOCEAN_ALLOWED_SURFACE_CLASSES} from "../providers/digitalocean/api-execution-v1.mjs";
+import {MAX_COST_CAP_MILLI_USD,MAX_TTL_SECONDS,DIGITALOCEAN_ALLOWED_SURFACE_CLASSES,DIGITALOCEAN_MINIMUM_LIVE_SCOPES} from "../providers/digitalocean/api-execution-v1.mjs";
 
 const root=resolve(import.meta.dirname,"..");
 const authority=JSON.parse(await readFile(resolve(root,"docs/EP52_P19_AUTH_ENDGAME_AUTHORITY_v001.json"),"utf8"));
@@ -19,6 +19,11 @@ assert.equal(authority.costEnvelope.additionalBillableResourcesAllowed,false);
 assert.equal(authority.digitalOcean.officialOrFirstPartySurfaceRequired,true);
 assert.equal(authority.digitalOcean.minimumEligibleSizeRequired,true);
 assert.equal(authority.digitalOcean.createOnlyAfterFreshInventoryAndPricingReadback,true);
+assert.equal(authority.digitalOcean.targetIdentityReadbackRequired,true);
+assert.equal(authority.digitalOcean.leastPrivilegeExactScopeMatchRequired,true);
+assert.deepEqual(authority.digitalOcean.forbiddenAliasScopes,["api:read","api:write"]);
+assert.deepEqual([...authority.digitalOcean.requiredScopes].sort(),[...DIGITALOCEAN_MINIMUM_LIVE_SCOPES].sort());
+assert.equal(authority.digitalOcean.ownershipTagsRequired,true);
 assert.equal(authority.digitalOcean.deleteOrTerminateRequired,true);
 assert.equal(authority.digitalOcean.deleteReadbackRequired,true);
 assert.equal(authority.digitalOcean.childBillableArtifactScanRequired,true);
@@ -39,6 +44,8 @@ console.log(JSON.stringify({
   digitalOceanCostCapMilliUsd:MAX_COST_CAP_MILLI_USD,
   digitalOceanTtlSeconds:MAX_TTL_SECONDS,
   digitalOceanAllowedSurfaceClasses:allowed,
+  digitalOceanMinimumLiveScopes:[...DIGITALOCEAN_MINIMUM_LIVE_SCOPES],
+  digitalOceanForbiddenAliasScopes:["api:read","api:write"],
   vmwareExistingInfrastructureOnly:true,
   githubExistingAuthReuse:true,
   authInteractionBudget:1
