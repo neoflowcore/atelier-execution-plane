@@ -1,0 +1,33 @@
+{
+  "schemaId": "EP52_LOCAL_LIVE_EVIDENCE_ANCHOR_V1",
+  "sourceHead": "f38d9749560658ce5167bd2d7a841aa395496606",
+  "sourceTree": "b18907f50af622f0cd85dd7a9d64c04be4ef937d",
+  "runId": 36803431743,
+  "artifactId": 11136875683,
+  "artifactDigest": "sha256:4849a39574d3d96f9a708b6ed045402b277e20e166cacc8e657c7bbc8af474d2",
+  "runnerContract": {
+    "runsOn": "ubuntu-24.04",
+    "nodeVersion": "22.13.0",
+    "maxEvidenceAgeDays": 7
+  },
+  "inputBlobs": {
+    "providers/local/index.mjs": "108137269af4c74a77458b018c9a51715e0267ca",
+    "worker/agent/index.mjs": "03714502973cb8465264089e5705e1fecf4e881a",
+    "scheduler/dag-v1.mjs": "7ef9fe6f2b6fc80577842bb4e4fb6be79700fc71",
+    "fault/shadow-comparator-v1.mjs": "9c9cd6d9c872656527c718c8734a5041506afc14",
+    "scripts/run-local-live-qualification.mjs": "bab2f902af7b87e70bd53ddc3c5fb47b0c7f910f",
+    "transports/direct-worker/index.mjs": "179d245bdb869c39c38c56af42bad0ff51147aec",
+    "package.json": "e3dc657d2b2fcd7c9eb91f6e085ca36c7852aab7"
+  },
+  "evidence": {
+    "LOCAL": "PASS",
+    "LOCAL_DIRECT_WORKER": "PASS",
+    "LONG_HEAVY_COMPUTE_LOCAL": "PASS",
+    "LARGE_DISK_LINUX_X64_CHROMIUM_CI": "PASS",
+    "MULTI_WORKER_DEPENDENCY_JOIN_LOCAL": "PASS",
+    "LOCAL_SHADOW_SEMANTIC_COMPARATOR": "PASS",
+    "ACTIVE_PAID_COMPUTE": 0,
+    "ORPHANED_BILLABLE_RESOURCE": 0,
+    "BILLABLE_RESIDUE": 0
+  }
+}

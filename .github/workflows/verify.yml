@@ -1,0 +1,55 @@
+name: verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - run: npm run verify
+      - name: Evaluate Local live evidence reuse
+        id: local_live_reuse
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/check-local-live-evidence-reuse.mjs
+      - name: Run EP52 Local live qualification
+        if: ${{ github.head_ref == 'ep52-h1-recovery' && steps.local_live_reuse.outputs.run_live == 'true' }}
+        run: node scripts/run-local-live-qualification.mjs
+      - name: Generate EP52 P23 pre-freeze source manifest
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-p23-prefreeze-manifest.mjs
+      - name: Generate deferred provider resume kit
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-deferred-provider-resume-kit.mjs
+      - name: Generate post-seal compatibility resume plan
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-post-seal-resume-plan.mjs
+      - name: Generate exact source closure v2
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-final-source-closure-v2.mjs
+      - name: Upload EP52 pre-final evidence
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-pre-final-${{ github.event.pull_request.head.sha }}
+          path: |
+            artifacts/ep52/local-live/receipt.json
+            artifacts/ep52/local-live-reuse/receipt.json
+            docs/EP52_P23_PRE_FREEZE_SOURCE_MANIFEST_v001.json
+            docs/EP52_DIGITALOCEAN_PROVIDER_LIFECYCLE_LIVE_RECEIPT_v001.json
+            docs/EP52_P20_P24_DEFERRED_LIVE_STATUS_v001.json
+            artifacts/ep52/deferred-provider/resume-kit.json
+            artifacts/ep52/post-seal/resume-plan.json
+            artifacts/ep52/source-closure/final-source-closure-v2.json
+          if-no-files-found: error
+          retention-days: 7
