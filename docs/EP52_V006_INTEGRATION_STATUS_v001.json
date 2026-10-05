@@ -1,0 +1,58 @@
+{
+  "schemaId": "EP52_V006_INTEGRATION_STATUS_V1",
+  "plan": {
+    "bundleSha256": "0962bf70904294d5449e30e17f198f8d77aeb1ef8f122c83e82069f4fc951b45",
+    "planSha256": "d93a01f6658b780f7c0ffda658cf34d62632ad5473f1bc167e1f624f61677118",
+    "validationSha256": "b55e1f1fb7cd004a5729fc73869add9d8026121f3a64e5e8fccf59a8f145bbb7"
+  },
+  "sourceIntegration": {
+    "P0_P13": "PASS",
+    "P14_P21_EVALUATORS": "PASS_SOURCE_READY",
+    "F01_F38": "PASS",
+    "credentialIndependentClosure": "PASS",
+    "vmwareRequired": false
+  },
+  "liveReferences": {
+    "R1": {
+      "status": "PENDING",
+      "reason": "NO_V006_RUNTIME_ACCEPTED_AUTOMATED_EXTERNAL_EXECUTOR_REFERENCE_YET"
+    },
+    "R2": {
+      "status": "PENDING",
+      "reason": "NO_FORCED_HUMAN_ACTUATION_REFERENCE_EXECUTED_YET"
+    },
+    "R3": {
+      "status": "PENDING",
+      "reason": "NO_EPHEMERAL_CREDENTIAL_MINT_SURFACE_AVAILABLE_ON_CURRENT_PROVIDER_CONNECTIONS"
+    },
+    "R4": {
+      "status": "PENDING",
+      "reason": "NO_LIVE_PARTIAL_COMPLETION_REFERENCE_EXECUTED_YET"
+    },
+    "R5": {
+      "status": "PENDING",
+      "reason": "NO_DISCONNECT_OR_NEW_CHAT_DURABLE_REATTACH_REFERENCE_EXECUTED_YET"
+    },
+    "R6": {
+      "status": "PENDING",
+      "reason": "TRANSPORT_READY_PRECONDITION_NOT_SATISFIED_FOR_NEW_PAID_RESOURCE"
+    }
+  },
+  "predecessorExecutionPlane": {
+    "digitalOceanProviderLifecycle": "PASS",
+    "digitalOceanDirectWorker": "PENDING_EXECUTION_SURFACE",
+    "digitalOceanGithubSelfHostedJit": "PENDING_EXECUTION_SURFACE",
+    "vmwareDirectWorker": "DEFERRED_PROVIDER_LIVE_WORK",
+    "vmwareGithubSelfHostedJit": "DEFERRED_PROVIDER_LIVE_WORK",
+    "vmwareRepeatability": "DEFERRED_PROVIDER_LIVE_WORK"
+  },
+  "safety": {
+    "newPaidResourceAllowedWhileTransportNotReady": false,
+    "manualSshNormalPath": false,
+    "thirdPartyPaidBrowserAgent": false,
+    "rawCredentialChatPath": false,
+    "predecessorDigitalOceanEvidencePromotionToV006": false
+  },
+  "currentDecision": "VMWARE_EXCLUDED_SOURCE_INTEGRATION_COMPLETE_LIVE_REFERENCES_REMAIN",
+  "horizon2StartAllowed": false
+}

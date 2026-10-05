@@ -1,6 +1,6 @@
 {
   "schemaId": "EP52_V006_PLAN_BINDING_V1",
-  "status": "BOUND_ADDITIVE_IMPLEMENTATION_OPEN",
+  "status": "BOUND_ADDITIVE_SOURCE_CLOSED_LIVE_PENDING",
   "uploadedBundle": "ATELIER_REV52_V006_v001_FULL_CONSOLIDATED_3PACK_20261003.zip",
   "bundleSha256": "0962bf70904294d5449e30e17f198f8d77aeb1ef8f122c83e82069f4fc951b45",
   "planSha256": "d93a01f6658b780f7c0ffda658cf34d62632ad5473f1bc167e1f624f61677118",
@@ -9,8 +9,16 @@
   "integrationMode": "ADDITIVE",
   "predecessorSealsMutable": false,
   "predecessorSourceClosurePreservedAsHistorical": true,
-  "currentProjectWideSourceExhausted": false,
-  "activeNext": "V006_P0_P13_CREDENTIAL_INDEPENDENT_IMPLEMENTATION",
+  "currentHorizon1CredentialIndependentWorkExhausted": true,
+  "v006CredentialIndependentNodeCount": 18,
+  "v006NegativeFixtureCount": 38,
+  "v006NegativeFixtureStatus": "PASS",
+  "v006FieldLiveEligibility": "PASS",
+  "authEndgameClosurePreflight": "PASS",
+  "activeNext": "V006_LIVE_REFERENCE_OR_PREDECESSOR_REQUIRED_LIVE",
   "vmwareRequiredForCurrentSourceProgress": false,
-  "horizon2StartAllowed": false
+  "vmwareRequiredForPredecessorProviderMatrixCompletion": true,
+  "predecessorDigitalOceanLifecycle": "PASS_NOT_PROMOTED_TO_V006_REFERENCE",
+  "horizon2StartAllowed": false,
+  "horizon2BlockReason": "HORIZON1_EXECUTION_PLANE_INTEGRATION_SEAL_REQUIRED"
 }
