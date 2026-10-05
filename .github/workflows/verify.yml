@@ -34,9 +34,12 @@ jobs:
       - name: Generate post-seal compatibility resume plan
         if: ${{ github.head_ref == 'ep52-h1-recovery' }}
         run: node scripts/generate-post-seal-resume-plan.mjs
-      - name: Generate exact source closure v2
+      - name: Generate predecessor source closure v2
         if: ${{ github.head_ref == 'ep52-h1-recovery' }}
         run: node scripts/generate-final-source-closure-v2.mjs
+      - name: Generate v006 source closure
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-v006-source-closure.mjs
       - name: Upload EP52 pre-final evidence
         if: ${{ github.head_ref == 'ep52-h1-recovery' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -48,8 +51,10 @@ jobs:
             docs/EP52_P23_PRE_FREEZE_SOURCE_MANIFEST_v001.json
             docs/EP52_DIGITALOCEAN_PROVIDER_LIFECYCLE_LIVE_RECEIPT_v001.json
             docs/EP52_P20_P24_DEFERRED_LIVE_STATUS_v001.json
+            docs/EP52_V006_PLAN_BINDING_v001.json
             artifacts/ep52/deferred-provider/resume-kit.json
             artifacts/ep52/post-seal/resume-plan.json
             artifacts/ep52/source-closure/final-source-closure-v2.json
+            artifacts/ep52/v006/source-closure.json
           if-no-files-found: error
           retention-days: 7
