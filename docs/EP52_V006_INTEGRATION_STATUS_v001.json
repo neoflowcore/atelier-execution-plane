@@ -12,30 +12,52 @@
     "credentialIndependentClosure": "PASS",
     "vmwareRequired": false
   },
+  "latestCanonicalLiveReferenceEvidence": {
+    "runId": 37552837445,
+    "runAttempt": 1,
+    "sourceHead": "3471baa1d645f39a49cfc5dd31860cfecfec1214",
+    "workflowConclusion": "success",
+    "summaryArtifactId": 11453910940,
+    "summaryArtifact": "ep52-v006-live-summary-3471baa1d645f39a49cfc5dd31860cfecfec1214",
+    "sourceIdentityBound": true
+  },
   "liveReferences": {
     "R1": {
-      "status": "PENDING",
-      "reason": "NO_V006_RUNTIME_ACCEPTED_AUTOMATED_EXTERNAL_EXECUTOR_REFERENCE_YET"
+      "status": "PASS",
+      "executorClass": "FIRST_PARTY_AUTOMATED",
+      "surface": "GITHUB_HOSTED_RUNNER",
+      "runtimeAuthoritativeAcceptance": "PASS",
+      "executorSelfAcceptance": false
     },
     "R2": {
       "status": "PENDING",
-      "reason": "NO_FORCED_HUMAN_ACTUATION_REFERENCE_EXECUTED_YET"
+      "reason": "BOUNDED_HUMAN_ACTUATION_REFERENCE_NOT_EXECUTED"
     },
     "R3": {
-      "status": "PENDING",
-      "reason": "NO_EPHEMERAL_CREDENTIAL_MINT_SURFACE_AVAILABLE_ON_CURRENT_PROVIDER_CONNECTIONS"
+      "status": "PASS",
+      "surface": "GITHUB_ACTIONS_OIDC",
+      "durableAuthorityReuse": "PASS",
+      "ephemeralCredentialFreshMint": "PASS",
+      "freshRemintWithoutUserRefresh": "PASS",
+      "rawTokenPersisted": false
     },
     "R4": {
-      "status": "PENDING",
-      "reason": "NO_LIVE_PARTIAL_COMPLETION_REFERENCE_EXECUTED_YET"
+      "status": "PASS",
+      "surface": "GITHUB_HOSTED_MULTI_JOB",
+      "partialCompletionReconcileResume": "PASS",
+      "resumeMissingOnly": true
     },
     "R5": {
-      "status": "PENDING",
-      "reason": "NO_DISCONNECT_OR_NEW_CHAT_DURABLE_REATTACH_REFERENCE_EXECUTED_YET"
+      "status": "PASS",
+      "surface": "GITHUB_HOSTED_MULTI_JOB",
+      "durableArtifactReattach": "PASS",
+      "duplicateExecution": 0
     },
     "R6": {
       "status": "PENDING",
-      "reason": "TRANSPORT_READY_PRECONDITION_NOT_SATISFIED_FOR_NEW_PAID_RESOURCE"
+      "reason": "EXECUTION_TRANSPORT_NOT_READY_FOR_SAFE_PAID_RESOURCE",
+      "providerPreflightReceipt": "docs/EP52_V006_R6_LIVE_PROVIDER_PREFLIGHT_v001.json",
+      "paidResourceCreateAllowed": false
     }
   },
   "predecessorExecutionPlane": {
@@ -48,11 +70,19 @@
   },
   "safety": {
     "newPaidResourceAllowedWhileTransportNotReady": false,
+    "newPaidResourceCreatedByLatestLiveReferences": false,
     "manualSshNormalPath": false,
     "thirdPartyPaidBrowserAgent": false,
     "rawCredentialChatPath": false,
+    "rawCredentialPersistedByLatestLiveReferences": false,
+    "duplicateExecutionObserved": 0,
+    "blindRetryObserved": 0,
     "predecessorDigitalOceanEvidencePromotionToV006": false
   },
-  "currentDecision": "VMWARE_EXCLUDED_SOURCE_INTEGRATION_COMPLETE_LIVE_REFERENCES_REMAIN",
+  "activeNext": [
+    "R2_HUMAN_ACTUATED_EXTERNAL_EXECUTOR",
+    "R6_PAID_RESOURCE_AUTH_PREFLIGHT_AFTER_EXECUTION_TRANSPORT_READY"
+  ],
+  "currentDecision": "AGENT_ASSISTED_LIVE_REFERENCES_R1_R3_R4_R5_PASS_R2_R6_PENDING",
   "horizon2StartAllowed": false
 }
