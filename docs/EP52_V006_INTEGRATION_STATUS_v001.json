@@ -13,13 +13,11 @@
     "vmwareRequired": false
   },
   "latestCanonicalLiveReferenceEvidence": {
-    "runId": 37552837445,
-    "runAttempt": 1,
-    "sourceHead": "3471baa1d645f39a49cfc5dd31860cfecfec1214",
-    "workflowConclusion": "success",
-    "summaryArtifactId": 11453910940,
-    "summaryArtifact": "ep52-v006-live-summary-3471baa1d645f39a49cfc5dd31860cfecfec1214",
-    "sourceIdentityBound": true
+    "runId": 37579628713,
+    "runAttempt": 2,
+    "sourceHead": "d7e701bac026dc778f1f57e8fd49fdd55b848bae",
+    "sourceIdentityBound": true,
+    "workflowConclusion": "success"
   },
   "liveReferences": {
     "R1": {
@@ -30,8 +28,18 @@
       "executorSelfAcceptance": false
     },
     "R2": {
-      "status": "PENDING",
-      "reason": "BOUNDED_HUMAN_ACTUATION_REFERENCE_NOT_EXECUTED"
+      "status": "PASS",
+      "surface": "GITHUB_ACTIONS_MANUAL_RERUN",
+      "runAttempt": 2,
+      "boundedAction": "PASS",
+      "exactTarget": "PASS",
+      "preActuationFreshness": "PASS",
+      "singleUseGuard": "PASS",
+      "resumeSignalOnly": "PASS",
+      "authoritativeReadback": "PASS",
+      "trustReset": "PASS",
+      "reattest": "PASS",
+      "duplicateSingleUseMutation": 0
     },
     "R3": {
       "status": "PASS",
@@ -55,9 +63,13 @@
     },
     "R6": {
       "status": "PENDING",
-      "reason": "EXECUTION_TRANSPORT_NOT_READY_FOR_SAFE_PAID_RESOURCE",
-      "providerPreflightReceipt": "docs/EP52_V006_R6_LIVE_PROVIDER_PREFLIGHT_v001.json",
-      "paidResourceCreateAllowed": false
+      "reason": "AUTOMATED_TRANSPORT_EXECUTION_NOT_YET_PROVEN_AND_EPHEMERAL_CLEANUP_PENDING",
+      "paidResourceCreateAllowed": false,
+      "providerCreateReadback": "PASS",
+      "providerDeleteReadback": "PASS",
+      "finalPaidResourceInventoryCount": 0,
+      "transportExecution": "NOT_EXECUTED",
+      "cleanupBoundary": "NON_BILLABLE_EPHEMERAL_ACCESS_ARTIFACT_PENDING_REMOVAL"
     }
   },
   "predecessorExecutionPlane": {
@@ -77,12 +89,19 @@
     "rawCredentialPersistedByLatestLiveReferences": false,
     "duplicateExecutionObserved": 0,
     "blindRetryObserved": 0,
-    "predecessorDigitalOceanEvidencePromotionToV006": false
+    "predecessorDigitalOceanEvidencePromotionToV006": false,
+    "newPaidResourceCurrentlyActive": false,
+    "ACTIVE_PAID_COMPUTE": 0,
+    "ORPHANED_BILLABLE_RESOURCE": 0,
+    "BILLABLE_RESIDUE": 0,
+    "ephemeralAccessArtifactResidue": 1,
+    "ephemeralAccessArtifactResidueNonBillable": true
   },
   "activeNext": [
-    "R2_HUMAN_ACTUATED_EXTERNAL_EXECUTOR",
-    "R6_PAID_RESOURCE_AUTH_PREFLIGHT_AFTER_EXECUTION_TRANSPORT_READY"
+    "R6_REMOVE_EPHEMERAL_ACCESS_ARTIFACT",
+    "R6_RETRY_AGENT_MANAGED_TRANSPORT_WITH_RETAINED_EPHEMERAL_CREDENTIAL",
+    "R6_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
   ],
-  "currentDecision": "AGENT_ASSISTED_LIVE_REFERENCES_R1_R3_R4_R5_PASS_R2_R6_PENDING",
+  "currentDecision": "AGENT_ASSISTED_LIVE_REFERENCES_R1_R2_R3_R4_R5_PASS_R6_PENDING_CLEANUP_BOUNDARY",
   "horizon2StartAllowed": false
 }
