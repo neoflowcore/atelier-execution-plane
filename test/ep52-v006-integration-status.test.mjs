@@ -27,7 +27,8 @@ test("v006 integration status preserves predecessor boundaries while advancing a
   assert.equal(s.safety.duplicateExecutionObserved,0);
   assert.equal(s.currentDecision,"AGENT_ASSISTED_LIVE_REFERENCES_R1_R2_R3_R4_R5_PASS_R6_PENDING_CLEANUP_BOUNDARY");
   assert.deepEqual(s.activeNext,[
-    "R2_HUMAN_ACTUATED_EXTERNAL_EXECUTOR",
-    "R6_PAID_RESOURCE_AUTH_PREFLIGHT_AFTER_EXECUTION_TRANSPORT_READY"
+    "R6_REMOVE_EPHEMERAL_ACCESS_ARTIFACT",
+    "R6_RETRY_AGENT_MANAGED_TRANSPORT_WITH_RETAINED_EPHEMERAL_CREDENTIAL",
+    "R6_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
   ]);
 });
