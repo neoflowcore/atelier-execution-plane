@@ -5,6 +5,7 @@ on:
   pull_request:
 permissions:
   contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -83,6 +84,8 @@ jobs:
         with:
           node-version: '22.13.0'
       - name: Run v006 R3 durable authority to ephemeral OIDC credential reference
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/run-v006-r3-github-oidc-reference.mjs
       - name: Upload v006 R3 live reference evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -145,5 +148,45 @@ jobs:
         with:
           name: ep52-v006-continuity-${{ github.event.pull_request.head.sha }}
           path: artifacts/ep52/v006/live-references/r4-r5.json
+          if-no-files-found: error
+          retention-days: 7
+
+  v006_live_reference_summary:
+    needs: [verify, v006_r3_oidc, v006_partial_resume]
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Download pre-final evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-pre-final-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/aggregate-input/pre-final
+      - name: Download R3 evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-v006-r3-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/aggregate-input/r3
+      - name: Download R4 R5 evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-v006-continuity-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/aggregate-input/continuity
+      - name: Aggregate v006 live references
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/aggregate-v006-live-references.mjs
+      - name: Upload v006 live reference summary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-live-summary-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/live-references/summary.json
           if-no-files-found: error
           retention-days: 7
