@@ -10,13 +10,14 @@ const sourceSha=process.env.EP52_SOURCE_SHA;
 const eventName=process.env.GITHUB_EVENT_NAME;
 const auth=process.env.GH_READ_CREDENTIAL;
 const apiUrl=process.env.GITHUB_API_URL??"https://api.github.com";
-const actor=process.env.GITHUB_ACTOR??null;
+const actor=process.env.GITHUB_ACTOR??null;\nconst triggeringActor=process.env.GITHUB_TRIGGERING_ACTOR??null;
 const runId=process.env.GITHUB_RUN_ID??null;
 const runAttempt=Number(process.env.GITHUB_RUN_ATTEMPT??"0");
 if(!repository||!sourceSha||!auth)throw new Error("V006_R2_CONTEXT_REQUIRED");
 if(eventName!=="pull_request")throw new Error("V006_R2_PR_EVENT_REQUIRED");
 if(!/^[0-9a-f]{40}$/.test(sourceSha))throw new Error("V006_R2_SOURCE_SHA_INVALID");
 if(!Number.isSafeInteger(runAttempt)||runAttempt<=1)throw new Error("V006_R2_HUMAN_RERUN_REQUIRED");
+if(typeof triggeringActor!=="string"||!triggeringActor||/\[bot\]$/i.test(triggeringActor)||triggeringActor==="github-actions")throw new Error("V006_R2_HUMAN_TRIGGERING_ACTOR_REQUIRED");
 
 async function gh(path){
   const res=await fetch(apiUrl+path,{headers:{Accept:"application/vnd.github+json",Authorization:`Bearer ${auth}`,"X-GitHub-Api-Version":"2022-11-28"}});
@@ -57,7 +58,7 @@ const evidence={
     runId,
     runAttempt,
     boundedAction:"MANUAL_RERUN_EXACT_PR_WORKFLOW",
-    humanActuationObserved:runAttempt>1,
+    humanActuationObserved:runAttempt>1&&Boolean(triggeringActor),
     externalMutationPerformed:false
   },
   preActuation:{targetReadbackFresh:true,exactTarget:true,sourcePlanBindingFresh:true},
@@ -73,4 +74,4 @@ const evidence={
 };
 await mkdir(resolve(root,"artifacts/ep52/v006/live-references"),{recursive:true});
 await writeFile(resolve(root,"artifacts/ep52/v006/live-references/r2.json"),JSON.stringify(evidence,null,2)+"\n");
-console.log(`V006_R2=PASS source=${sourceSha} actor=${actor??"unknown"} runAttempt=${runAttempt} mutation=false`);
+console.log(`V006_R2=PASS source=${sourceSha} actor=${actor??"unknown"} triggeringActor=${triggeringActor} runAttempt=${runAttempt} mutation=false`);
