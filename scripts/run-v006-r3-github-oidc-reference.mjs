@@ -7,11 +7,12 @@ const root=resolve(import.meta.dirname,"..");
 const requestUrl=process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
 const requestToken=process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
 const repository=process.env.GITHUB_REPOSITORY;
+const sourceSha=process.env.EP52_SOURCE_SHA;
 const runId=process.env.GITHUB_RUN_ID;
 const runAttempt=process.env.GITHUB_RUN_ATTEMPT;
 const workflowRef=process.env.GITHUB_WORKFLOW_REF??null;
 const audience="atelier-runtime-v006-r3";
-if(!requestUrl||!requestToken||!repository||!runId)throw new Error("V006_R3_OIDC_CONTEXT_REQUIRED");
+if(!requestUrl||!requestToken||!repository||!sourceSha||!runId)throw new Error("V006_R3_OIDC_CONTEXT_REQUIRED");
 
 function decodeJwtPayload(jwt){
   const parts=String(jwt).split(".");
@@ -78,6 +79,7 @@ const safeClaims=claims=>({
 const evidence={
   schemaId:"EP52_V006_R3_GITHUB_OIDC_REFERENCE_V1",
   status:"PASS",
+  source:{repository,sourceSha},
   reference,
   authority:{
     provider:"GITHUB_ACTIONS",
@@ -110,4 +112,4 @@ const evidence={
 };
 await mkdir(resolve(root,"artifacts/ep52/v006/live-references"),{recursive:true});
 await writeFile(resolve(root,"artifacts/ep52/v006/live-references/r3.json"),JSON.stringify(evidence,null,2)+"\n");
-console.log(`V006_R3=PASS repository=${repository} audience=${audience} freshRemint=true rawPersisted=false`);
+console.log(`V006_R3=PASS source=${sourceSha} repository=${repository} audience=${audience} freshRemint=true rawPersisted=false`);
