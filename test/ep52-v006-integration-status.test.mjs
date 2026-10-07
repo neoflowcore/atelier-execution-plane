@@ -25,7 +25,7 @@ test("v006 integration status preserves predecessor boundaries while advancing a
   assert.equal(s.safety.newPaidResourceCreatedByLatestLiveReferences,false);
   assert.equal(s.safety.rawCredentialPersistedByLatestLiveReferences,false);
   assert.equal(s.safety.duplicateExecutionObserved,0);
-  assert.equal(s.currentDecision,"AGENT_ASSISTED_LIVE_REFERENCES_R1_R3_R4_R5_PASS_R2_R6_PENDING");
+  assert.equal(s.currentDecision,"AGENT_ASSISTED_LIVE_REFERENCES_R1_R2_R3_R4_R5_PASS_R6_PENDING_CLEANUP_BOUNDARY");
   assert.deepEqual(s.activeNext,[
     "R2_HUMAN_ACTUATED_EXTERNAL_EXECUTOR",
     "R6_PAID_RESOURCE_AUTH_PREFLIGHT_AFTER_EXECUTION_TRANSPORT_READY"
