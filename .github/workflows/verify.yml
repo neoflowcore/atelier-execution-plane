@@ -66,6 +66,32 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  v006_r3_oidc:
+    needs: verify
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Run v006 R3 durable authority to ephemeral OIDC credential reference
+        run: node scripts/run-v006-r3-github-oidc-reference.mjs
+      - name: Upload v006 R3 live reference evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-r3-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/live-references/r3.json
+          if-no-files-found: error
+          retention-days: 7
+
   v006_partial_prepare:
     needs: verify
     if: ${{ github.head_ref == 'ep52-h1-recovery' }}
