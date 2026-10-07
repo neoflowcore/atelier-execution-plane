@@ -65,3 +65,59 @@ jobs:
             artifacts/ep52/v006/source-closure.json
           if-no-files-found: error
           retention-days: 7
+
+  v006_partial_prepare:
+    needs: verify
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Prepare v006 R4 partial completion durable state
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r4-partial-prepare.mjs
+      - name: Upload v006 durable partial state
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-partial-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/continuity/partial-state.json
+          if-no-files-found: error
+          retention-days: 1
+
+  v006_partial_resume:
+    needs: v006_partial_prepare
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Download v006 durable partial state
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-v006-partial-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/continuity
+      - name: Resume v006 R4 and prove R5 reattach
+        env:
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r4-r5-resume.mjs
+      - name: Upload v006 R4 R5 live reference evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-continuity-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/live-references/r4-r5.json
+          if-no-files-found: error
+          retention-days: 7
