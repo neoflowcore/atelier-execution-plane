@@ -55,6 +55,7 @@ const evidence={
   actuation:{
     event:"PULL_REQUEST_WORKFLOW_MANUAL_RERUN",
     actor,
+    triggeringActor,
     runId,
     runAttempt,
     boundedAction:"MANUAL_RERUN_EXACT_PR_WORKFLOW",
