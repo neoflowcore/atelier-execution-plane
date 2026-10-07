@@ -25,6 +25,12 @@ jobs:
           EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           GH_READ_CREDENTIAL: ${{ github.token }}
         run: node scripts/run-v006-r1-github-reference.mjs
+      - name: Run v006 R2 human-actuated rerun reference
+        if: ${{ github.head_ref == 'ep52-h1-recovery' && github.run_attempt > 1 }}
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r2-human-actuated-reference.mjs
       - name: Evaluate Local live evidence reuse
         id: local_live_reuse
         if: ${{ github.head_ref == 'ep52-h1-recovery' }}
@@ -56,6 +62,7 @@ jobs:
             artifacts/ep52/local-live/receipt.json
             artifacts/ep52/local-live-reuse/receipt.json
             artifacts/ep52/v006/live-references/r1.json
+            artifacts/ep52/v006/live-references/r2.json
             docs/EP52_P23_PRE_FREEZE_SOURCE_MANIFEST_v001.json
             docs/EP52_DIGITALOCEAN_PROVIDER_LIFECYCLE_LIVE_RECEIPT_v001.json
             docs/EP52_P20_P24_DEFERRED_LIVE_STATUS_v001.json
