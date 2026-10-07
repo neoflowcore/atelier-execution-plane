@@ -18,7 +18,7 @@ test("v006 integration status preserves predecessor boundaries while advancing a
   assert.equal(s.liveReferences.R3.status,"PASS");
   assert.equal(s.liveReferences.R4.status,"PASS");
   assert.equal(s.liveReferences.R5.status,"PASS");
-  assert.equal(s.liveReferences.R2.status,"PENDING");
+  assert.equal(s.liveReferences.R2.status,"PASS");
   assert.equal(s.liveReferences.R6.status,"PENDING");
   assert.equal(s.liveReferences.R6.paidResourceCreateAllowed,false);
   assert.equal(s.safety.newPaidResourceAllowedWhileTransportNotReady,false);
