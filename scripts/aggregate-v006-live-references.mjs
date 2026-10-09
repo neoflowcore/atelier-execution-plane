@@ -14,7 +14,7 @@ const r2=await optionalJson("artifacts/ep52/v006/aggregate-input/pre-final/artif
 const r3=await json("artifacts/ep52/v006/aggregate-input/r3/r3.json");
 const continuity=await json("artifacts/ep52/v006/aggregate-input/continuity/r4-r5.json");
 
-const r2Pass=r2?.status==="PASS"&&r2?.reference?.status==="PASS";
+const r2Pass=r2?.status==="PASS"&&r2?.reference?.status==="PASS"&&r2?.provenance?.status==="PASS"&&r2?.actuation?.humanActuationObserved===true;
 const sourceChecks={
   R1:r1?.source?.sourceSha===expectedSha,
   R2:r2Pass?r2?.source?.sourceSha===expectedSha:null,
@@ -31,7 +31,7 @@ const references={
   R1:{status:"PASS",class:"AUTOMATED_MACHINE_EXTERNAL_EXECUTOR",evidence:"r1.json"},
   R2:r2Pass
     ?{status:"PASS",class:"HUMAN_ACTUATED_EXTERNAL_EXECUTOR",evidence:"r2.json",humanActuationObserved:true}
-    :{status:"PENDING",class:"HUMAN_ACTUATED_EXTERNAL_EXECUTOR",reason:"BOUNDED_HUMAN_ACTUATION_REFERENCE_NOT_EXECUTED"},
+    :{status:"PENDING",class:"HUMAN_ACTUATED_EXTERNAL_EXECUTOR",reason:"INDEPENDENT_HUMAN_ACTUATION_PROVENANCE_NOT_VERIFIED"},
   R3:{status:"PASS",class:"DURABLE_AUTHORITY_TO_EPHEMERAL_CREDENTIAL",evidence:"r3.json"},
   R4:{status:"PASS",class:"PARTIAL_COMPLETION_RECONCILE_RESUME",evidence:"r4-r5.json"},
   R5:{status:"PASS",class:"DISCONNECT_DURABLE_REATTACH",evidence:"r4-r5.json"},

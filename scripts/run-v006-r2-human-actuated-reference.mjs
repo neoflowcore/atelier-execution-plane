@@ -3,6 +3,7 @@ import {mkdir,writeFile} from "node:fs/promises";
 import {resolve} from "node:path";
 import {evaluateHumanActuatedReferenceV1} from "../v006/live-reference-v1.mjs";
 import {compileManualInterventionReceiptV1} from "../session/control-v1.mjs";
+import {evaluateR2HumanProvenanceV1} from "../v006/human-actuation-provenance-v1.mjs";
 
 const root=resolve(import.meta.dirname,"..");
 const repository=process.env.GITHUB_REPOSITORY;
@@ -45,6 +46,7 @@ const post=await gh(`/repos/${repository}/commits/${sourceSha}`);
 const authoritativeReadback=post?.sha===sourceSha&&post?.commit?.tree?.sha===pre?.commit?.tree?.sha;
 if(!authoritativeReadback)throw new Error("V006_R2_AUTHORITATIVE_READBACK_MISMATCH");
 const reattested=post.sha===sourceSha&&typeof post?.commit?.tree?.sha==="string";
+const humanProvenance=evaluateR2HumanProvenanceV1({sourceSha,runAttempt,triggeringActor});
 
 const reference=evaluateHumanActuatedReferenceV1({
   boundedAction:"PASS",
@@ -60,20 +62,21 @@ if(reference.status!=="PASS")throw new Error(`V006_R2_REFERENCE_PENDING:${refere
 
 const evidence={
   schemaId:"EP52_V006_R2_HUMAN_ACTUATED_REFERENCE_V1",
-  status:"PASS",
+  status:humanProvenance.status==="PASS"?"PASS":"PENDING_HUMAN_PROVENANCE",
   source:{repository,sourceSha,treeSha:post.commit.tree.sha},
   actuation:{
-    event:"PULL_REQUEST_WORKFLOW_MANUAL_RERUN",
+    event:"PULL_REQUEST_WORKFLOW_RERUN_ORIGIN_UNVERIFIED",
     actor,
     triggeringActor,
     runId,
     runAttempt,
-    boundedAction:"MANUAL_RERUN_EXACT_PR_WORKFLOW",
-    humanActuationObserved:runAttempt>1&&Boolean(triggeringActor),
+    boundedAction:"RERUN_EXACT_PR_WORKFLOW",
+    humanActuationObserved:humanProvenance.status==="PASS",
     externalMutationPerformed:false
   },
   preActuation:{targetReadbackFresh:true,exactTarget:true,sourcePlanBindingFresh:true},
   intervention:{trustReset:intervention.trustReset,reattestRequired:intervention.reattestRequired},
+  provenance:humanProvenance,
   authoritativeReadback:{source:"GITHUB_REST_API",headMatch:true,treeStable:true},
   reference,
   safety:{
@@ -86,4 +89,4 @@ const evidence={
 
 await mkdir(resolve(root,"artifacts/ep52/v006/live-references"),{recursive:true});
 await writeFile(resolve(root,"artifacts/ep52/v006/live-references/r2.json"),JSON.stringify(evidence,null,2)+"\n");
-console.log(`V006_R2=PASS source=${sourceSha} actor=${actor??"unknown"} triggeringActor=${triggeringActor} runAttempt=${runAttempt} mutation=false`);
+console.log(`V006_R2_TECHNICAL=PASS HUMAN_PROVENANCE=${humanProvenance.status} source=${sourceSha} runAttempt=${runAttempt}`);

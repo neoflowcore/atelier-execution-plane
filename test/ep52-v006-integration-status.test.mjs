@@ -18,17 +18,20 @@ test("v006 integration status preserves predecessor boundaries while advancing a
   assert.equal(s.liveReferences.R3.status,"PASS");
   assert.equal(s.liveReferences.R4.status,"PASS");
   assert.equal(s.liveReferences.R5.status,"PASS");
-  assert.equal(s.liveReferences.R2.status,"PASS");
+  assert.equal(s.liveReferences.R2.status,"PENDING");
+  assert.equal(s.liveReferences.R2.humanActuationProvenance,"UNVERIFIED");
+  assert.equal(s.safety.ephemeralAccessArtifactResidue,0);
+  assert.equal(s.liveReferences.R6.cleanupBoundary,"CLOSED_PROVIDER_KEY_INVENTORY_ZERO");
   assert.equal(s.liveReferences.R6.status,"PENDING");
   assert.equal(s.liveReferences.R6.paidResourceCreateAllowed,false);
   assert.equal(s.safety.newPaidResourceAllowedWhileTransportNotReady,false);
   assert.equal(s.safety.newPaidResourceCreatedByLatestLiveReferences,false);
   assert.equal(s.safety.rawCredentialPersistedByLatestLiveReferences,false);
   assert.equal(s.safety.duplicateExecutionObserved,0);
-  assert.equal(s.currentDecision,"AGENT_ASSISTED_LIVE_REFERENCES_R1_R2_R3_R4_R5_PASS_R6_PENDING_CLEANUP_BOUNDARY");
+  assert.equal(s.currentDecision,"R1_R3_R4_R5_LIVE_EVIDENCE_PASS_R2_PROVENANCE_UNVERIFIED_R6_SURFACE_PENDING");
   assert.deepEqual(s.activeNext,[
-    "R6_REMOVE_EPHEMERAL_ACCESS_ARTIFACT",
-    "R6_RETRY_AGENT_MANAGED_TRANSPORT_WITH_RETAINED_EPHEMERAL_CREDENTIAL",
-    "R6_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
+    "R2_INDEPENDENT_HUMAN_ACTUATION_PROVENANCE",
+    "R6_FIRST_PARTY_REMOTE_EXECUTION_SURFACE_REATTACH",
+    "R6_PRE_PROVISION_ADMISSION_THEN_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
   ]);
 });

@@ -17,7 +17,10 @@
     "runAttempt": 2,
     "sourceHead": "d7e701bac026dc778f1f57e8fd49fdd55b848bae",
     "sourceIdentityBound": true,
-    "workflowConclusion": "success"
+    "workflowConclusion": "success",
+    "evidenceLimitations": [
+      "R2_GITHUB_RERUN_API_CALL_DID_NOT_PROVE_DIRECT_HUMAN_ACTUATION"
+    ]
   },
   "liveReferences": {
     "R1": {
@@ -28,7 +31,7 @@
       "executorSelfAcceptance": false
     },
     "R2": {
-      "status": "PASS",
+      "status": "PENDING",
       "surface": "GITHUB_ACTIONS_MANUAL_RERUN",
       "runAttempt": 2,
       "boundedAction": "PASS",
@@ -39,7 +42,11 @@
       "authoritativeReadback": "PASS",
       "trustReset": "PASS",
       "reattest": "PASS",
-      "duplicateSingleUseMutation": 0
+      "duplicateSingleUseMutation": 0,
+      "technicalChecks": "PASS",
+      "humanActuationProvenance": "UNVERIFIED",
+      "originObserved": "DELEGATED_GITHUB_API_RERUN",
+      "humanActuationObserved": false
     },
     "R3": {
       "status": "PASS",
@@ -63,13 +70,14 @@
     },
     "R6": {
       "status": "PENDING",
-      "reason": "AUTOMATED_TRANSPORT_EXECUTION_NOT_YET_PROVEN_AND_EPHEMERAL_CLEANUP_PENDING",
+      "reason": "FIRST_PARTY_REMOTE_EXECUTION_SURFACE_NOT_AVAILABLE",
       "paidResourceCreateAllowed": false,
       "providerCreateReadback": "PASS",
       "providerDeleteReadback": "PASS",
       "finalPaidResourceInventoryCount": 0,
       "transportExecution": "NOT_EXECUTED",
-      "cleanupBoundary": "NON_BILLABLE_EPHEMERAL_ACCESS_ARTIFACT_PENDING_REMOVAL"
+      "cleanupBoundary": "CLOSED_PROVIDER_KEY_INVENTORY_ZERO",
+      "ephemeralAccessArtifactResidue": 0
     }
   },
   "predecessorExecutionPlane": {
@@ -94,14 +102,14 @@
     "ACTIVE_PAID_COMPUTE": 0,
     "ORPHANED_BILLABLE_RESOURCE": 0,
     "BILLABLE_RESIDUE": 0,
-    "ephemeralAccessArtifactResidue": 1,
-    "ephemeralAccessArtifactResidueNonBillable": true
+    "ephemeralAccessArtifactResidue": 0,
+    "ephemeralAccessArtifactResidueNonBillable": false
   },
   "activeNext": [
-    "R6_REMOVE_EPHEMERAL_ACCESS_ARTIFACT",
-    "R6_RETRY_AGENT_MANAGED_TRANSPORT_WITH_RETAINED_EPHEMERAL_CREDENTIAL",
-    "R6_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
+    "R2_INDEPENDENT_HUMAN_ACTUATION_PROVENANCE",
+    "R6_FIRST_PARTY_REMOTE_EXECUTION_SURFACE_REATTACH",
+    "R6_PRE_PROVISION_ADMISSION_THEN_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
   ],
-  "currentDecision": "AGENT_ASSISTED_LIVE_REFERENCES_R1_R2_R3_R4_R5_PASS_R6_PENDING_CLEANUP_BOUNDARY",
+  "currentDecision": "R1_R3_R4_R5_LIVE_EVIDENCE_PASS_R2_PROVENANCE_UNVERIFIED_R6_SURFACE_PENDING",
   "horizon2StartAllowed": false
 }
