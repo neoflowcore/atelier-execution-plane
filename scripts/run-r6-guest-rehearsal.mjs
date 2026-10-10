@@ -1,17 +1,19 @@
 import {spawn,execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdtemp,readFile,writeFile,rm,mkdir} from 'node:fs/promises';
-import {tmpdir,userInfo} from 'node:os';
+import {userInfo} from 'node:os';
 import {createHash} from 'node:crypto';
 import {createServer,connect} from 'node:net';
 import {executeSshDirectWorkerV1} from '../transports/direct-worker/ssh-execution-v1.mjs';
 
 const exec=promisify(execFile),hash=x=>createHash('sha256').update(x).digest('hex');
 if(process.getuid?.()!==0)throw Error('REHEARSAL_REQUIRES_ISOLATED_SSHD_ROOT');
-const root=await mkdtemp(`${tmpdir()}/atelier-r6-rehearsal-`);
+// StrictModes validates ancestor directories too. Use root-owned /run rather
+// than world-writable /tmp; do not relax OpenSSH ownership protections.
+const root=await mkdtemp('/run/atelier-r6-rehearsal-');
 const user=process.env.SUDO_USER??userInfo().username;
 if(!/^[a-z_][a-z0-9_-]*$/.test(user))throw Error('REHEARSAL_USER_INVALID');
-let daemon=null,receipt=null;
+let daemon=null,receipt=null,daemonError='';
 try{
   const sourceSha=process.env.EP52_SOURCE_SHA??'a'.repeat(40);
   const planSha256='d93a01f6658b780f7c0ffda658cf34d62632ad5473f1bc167e1f624f61677118';
@@ -36,7 +38,8 @@ try{
   ].join('\n')+'\n',{mode:0o600});
   await mkdir('/run/sshd',{recursive:true});
   await exec('/usr/sbin/sshd',['-t','-f',`${root}/sshd_config`]);
-  daemon=spawn('/usr/sbin/sshd',['-D','-e','-f',`${root}/sshd_config`],{stdio:'ignore'});
+  daemon=spawn('/usr/sbin/sshd',['-D','-e','-f',`${root}/sshd_config`],{stdio:['ignore','ignore','pipe']});
+  daemon.stderr.on('data',b=>{if(daemonError.length<8192)daemonError+=b.toString('utf8').slice(0,8192-daemonError.length);});
   let ready=false;
   for(let i=0;i<30&&!ready;i++){
     ready=await new Promise(resolve=>{const s=connect(port,'127.0.0.1');s.on('connect',()=>{s.destroy();resolve(true)});s.on('error',()=>resolve(false));});
@@ -51,9 +54,12 @@ try{
   await exec('/usr/bin/ssh-keygen',['-q','-t','ed25519','-N','','-f',`${root}/wrong-host`]);
   const wrong=(await readFile(`${root}/wrong-host.pub`,'utf8')).trim().split(' ').slice(0,2).join(' ');
   await writeFile(`${root}/known_hosts`,`[127.0.0.1]:${port} ${wrong}\n`,{mode:0o600});
-  let pinRejected=false;try{await executeSshDirectWorkerV1(input);}catch(e){pinRejected=e.message==='SSH_EXECUTION_FAILED';}
+  let pinRejected=false;try{await executeSshDirectWorkerV1(input);}catch(e){pinRejected=e.message==='SSH_HOST_KEY_REJECTED';}
   if(!pinRejected)throw Error('REHEARSAL_HOST_PIN_REJECTION_FAILED');
   receipt={schemaId:'EP52_R6_GUEST_REHEARSAL_V1',classification:'LOCALHOST_TRANSPORT_REHEARSAL_ONLY',sourceSha,planSha256,nodeVersion:process.version,workerSourceSha256:hash(workerSource),execution:'PASS',hostKeyMismatchRejected:true,providerMutations:0,paidResourcesCreated:0,remoteProviderAttested:false,finalR6Acceptance:false};
+}catch(e){
+  const code=/^(SSH_|REHEARSAL_)[A-Z_]+$/.test(e.message)?e.message:'REHEARSAL_EXECUTION_FAILED';
+  receipt={schemaId:'EP52_R6_GUEST_REHEARSAL_V1',classification:'LOCALHOST_TRANSPORT_REHEARSAL_ONLY',sourceSha:process.env.EP52_SOURCE_SHA??null,nodeVersion:process.version,execution:'FAIL',failureCode:code,serverSecurityCapability:/chroot.*Operation not permitted/.test(daemonError)?'CHROOT_UNAVAILABLE':'NOT_CLASSIFIED',providerMutations:0,paidResourcesCreated:0,remoteProviderAttested:false,finalR6Acceptance:false};
 }finally{
   if(daemon&&daemon.exitCode===null&&daemon.signalCode===null){
     const stopped=new Promise(resolve=>daemon.once('close',resolve));
@@ -67,3 +73,4 @@ receipt.ephemeralCredentialCleanup='PASS';
 await mkdir('artifacts/ep52/r6-guest-rehearsal',{recursive:true});
 await writeFile('artifacts/ep52/r6-guest-rehearsal/receipt.json',JSON.stringify(receipt,null,2)+'\n');
 console.log(JSON.stringify(receipt));
+if(receipt.execution!=='PASS')process.exitCode=1;

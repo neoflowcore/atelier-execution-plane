@@ -34,14 +34,22 @@ export async function executeSshDirectWorkerV1(input={}){
   const args=['-T','-F','/dev/null','-p',String(port),'-i',privateKeyPath,'-o',`UserKnownHostsFile=${knownHostsPath}`,'-o','GlobalKnownHostsFile=/dev/null','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','PasswordAuthentication=no','-o','KbdInteractiveAuthentication=no','-o','ConnectTimeout=5','-o','ClearAllForwardings=yes','-o','LogLevel=ERROR',`${user}@${host}`,`${nodePath} --input-type=module -e '${remote.replaceAll("'","'\\''")}'`];
   return await new Promise((resolve,reject)=>{
     const child=spawn('/usr/bin/ssh',args,{shell:false,env:{PATH:'/usr/bin:/bin'},stdio:['pipe','pipe','pipe']});
-    const chunks=[];let bytes=0,overflow=false,timedOut=false;
+    const chunks=[];let bytes=0,overflow=false,timedOut=false,stderr='';
     const timer=setTimeout(()=>{timedOut=true;child.kill('SIGKILL');},timeoutMs);
     child.stdout.on('data',b=>{bytes+=b.length;if(bytes>maxOutputBytes+8192){overflow=true;child.kill('SIGKILL');}else chunks.push(b);});
-    child.stderr.on('data',()=>{});child.stdin.on('error',()=>{});
+    child.stderr.on('data',b=>{if(stderr.length<8192)stderr+=b.toString('utf8').slice(0,8192-stderr.length);});child.stdin.on('error',()=>{});
     child.on('error',()=>{clearTimeout(timer);reject(Error('SSH_PROCESS_FAILED'));});
     child.on('close',code=>{
       clearTimeout(timer);
-      if(timedOut||overflow||code!==0){reject(Error(timedOut?'SSH_EXECUTION_TIMEOUT':overflow?'SSH_OUTPUT_LIMIT':'SSH_EXECUTION_FAILED'));return;}
+      if(timedOut||overflow||code!==0){
+        const diagnostic=/Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED/.test(stderr)?'SSH_HOST_KEY_REJECTED':
+          /Permission denied/.test(stderr)?'SSH_AUTHENTICATION_FAILED':
+          /WORKER_NODE_VERSION_MISMATCH/.test(stderr)?'SSH_WORKER_NODE_VERSION_MISMATCH':
+          /WORKER_SOURCE_DIGEST_MISMATCH/.test(stderr)?'SSH_WORKER_SOURCE_DIGEST_MISMATCH':
+          /not found|No such file/.test(stderr)?'SSH_REMOTE_RUNTIME_UNAVAILABLE':
+          /Connection refused|Connection reset|Connection closed/.test(stderr)?'SSH_CONNECTION_FAILED':'SSH_EXECUTION_FAILED';
+        reject(Error(timedOut?'SSH_EXECUTION_TIMEOUT':overflow?'SSH_OUTPUT_LIMIT':diagnostic));return;
+      }
       try{
         const r=JSON.parse(Buffer.concat(chunks).toString('utf8'));
         if(r.sourceSha!==sourceSha||r.planSha256!==planSha256||r.workerSourceSha256!==workerSourceSha256||r.nodeVersion!==nodeVersion||r.result.executionId!==job.executionId||r.result.attemptId!==job.attemptId||r.result.fenceToken!==job.fenceToken)throw Error();
