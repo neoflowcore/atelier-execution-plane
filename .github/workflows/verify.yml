@@ -203,3 +203,36 @@ jobs:
             artifacts/ep52/v006/live-references/gate-report.json
           if-no-files-found: error
           retention-days: 7
+
+  r6_authenticated_readback:
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ep52-r6-authenticated-readback
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Read DigitalOcean identity and inventory without mutations
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+        run: node scripts/run-r6-authenticated-readback.mjs
+      - name: Preserve sanitized readback even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-connected-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-connected/readback.json
+          if-no-files-found: error
+          retention-days: 7
+
