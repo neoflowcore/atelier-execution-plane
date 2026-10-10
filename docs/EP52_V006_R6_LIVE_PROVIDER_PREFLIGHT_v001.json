@@ -1,0 +1,37 @@
+{
+  "schemaId": "EP52_V006_R6_LIVE_PROVIDER_PREFLIGHT_V1",
+  "provider": "DIGITALOCEAN",
+  "referenceClass": "R6_PAID_RESOURCE_AUTH_PREFLIGHT",
+  "sourceAnchorBeforeReceiptCommit": "2b31f2276a526dd556ddf249967f863b9b5b295b",
+  "providerReadback": {
+    "accountStatus": "active",
+    "dropletInventoryCount": 0,
+    "monthToDateUsageUsd": "2.40",
+    "accountBalanceUsd": "0.00",
+    "observedSizes": [
+      {"slug":"s-1vcpu-512mb-10gb","available":true,"priceHourlyUsd":0.00595,"memoryMiB":512,"vcpus":1,"diskGiB":10,"sgp1":true},
+      {"slug":"s-1vcpu-1gb","available":true,"priceHourlyUsd":0.00893,"memoryMiB":1024,"vcpus":1,"diskGiB":25,"sgp1":true}
+    ]
+  },
+  "admission": {
+    "EXECUTION_CREDENTIAL_READY": true,
+    "TRANSPORT_READY": false,
+    "NETWORK_REACHABILITY": true,
+    "SOURCE_READY": true,
+    "EXIT_PATH_READY": true,
+    "COST_ADMISSION": true,
+    "paidResourceCreateAllowed": false,
+    "code": "PAID_RESOURCE_CREATE_DENY",
+    "blockers": ["TRANSPORT_READY"]
+  },
+  "billingFirewall": {
+    "newPaidResourceCreated": false,
+    "ACTIVE_PAID_COMPUTE": 0,
+    "ORPHANED_BILLABLE_RESOURCE": 0,
+    "BILLABLE_RESIDUE": 0,
+    "cleanupState": "ZERO"
+  },
+  "decision": "R6_REMAINS_PENDING_UNTIL_SAFE_EXECUTION_TRANSPORT_EXISTS",
+  "agentUsagePolicy": "USE_AGENT_OR_REMOTE_EXECUTOR_FOR_DEVELOPMENT_WHEN_AVAILABLE_DO_NOT_CHANGE_RUNTIME_PRODUCT_ACCEPTANCE",
+  "rawCredentialChatPath": false
+}

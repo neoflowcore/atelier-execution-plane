@@ -1,0 +1,269 @@
+name: verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - run: npm run verify
+      - name: Run v006 R1 GitHub-hosted external executor reference
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r1-github-reference.mjs
+      - name: Run v006 R2 human-actuated rerun reference
+        if: ${{ github.head_ref == 'ep52-h1-recovery' && github.run_attempt > 1 }}
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r2-human-actuated-reference.mjs
+      - name: Evaluate Local live evidence reuse
+        id: local_live_reuse
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/check-local-live-evidence-reuse.mjs
+      - name: Run EP52 Local live qualification
+        if: ${{ github.head_ref == 'ep52-h1-recovery' && steps.local_live_reuse.outputs.run_live == 'true' }}
+        run: node scripts/run-local-live-qualification.mjs
+      - name: Generate EP52 P23 pre-freeze source manifest
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-p23-prefreeze-manifest.mjs
+      - name: Generate deferred provider resume kit
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-deferred-provider-resume-kit.mjs
+      - name: Generate post-seal compatibility resume plan
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-post-seal-resume-plan.mjs
+      - name: Generate predecessor source closure v2
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-final-source-closure-v2.mjs
+      - name: Generate v006 source closure
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: node scripts/generate-v006-source-closure.mjs
+      - name: Upload EP52 pre-final evidence
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-pre-final-${{ github.event.pull_request.head.sha }}
+          path: |
+            artifacts/ep52/local-live/receipt.json
+            artifacts/ep52/local-live-reuse/receipt.json
+            artifacts/ep52/v006/live-references/r1.json
+            artifacts/ep52/v006/live-references/r2.json
+            docs/EP52_P23_PRE_FREEZE_SOURCE_MANIFEST_v001.json
+            docs/EP52_DIGITALOCEAN_PROVIDER_LIFECYCLE_LIVE_RECEIPT_v001.json
+            docs/EP52_P20_P24_DEFERRED_LIVE_STATUS_v001.json
+            docs/EP52_V006_PLAN_BINDING_v001.json
+            artifacts/ep52/deferred-provider/resume-kit.json
+            artifacts/ep52/post-seal/resume-plan.json
+            artifacts/ep52/source-closure/final-source-closure-v2.json
+            artifacts/ep52/v006/source-closure.json
+          if-no-files-found: error
+          retention-days: 7
+
+  v006_r3_oidc:
+    needs: verify
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Run v006 R3 durable authority to ephemeral OIDC credential reference
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/run-v006-r3-github-oidc-reference.mjs
+      - name: Upload v006 R3 live reference evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-r3-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/live-references/r3.json
+          if-no-files-found: error
+          retention-days: 7
+
+  v006_partial_prepare:
+    needs: verify
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Prepare v006 R4 partial completion durable state
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r4-partial-prepare.mjs
+      - name: Upload v006 durable partial state
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-partial-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/continuity/partial-state.json
+          if-no-files-found: error
+          retention-days: 1
+
+  v006_partial_resume:
+    needs: v006_partial_prepare
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Download v006 durable partial state
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-v006-partial-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/continuity
+      - name: Resume v006 R4 and prove R5 reattach
+        env:
+          GH_READ_CREDENTIAL: ${{ github.token }}
+        run: node scripts/run-v006-r4-r5-resume.mjs
+      - name: Upload v006 R4 R5 live reference evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-continuity-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/live-references/r4-r5.json
+          if-no-files-found: error
+          retention-days: 7
+
+  v006_live_reference_summary:
+    needs: [verify, v006_r3_oidc, v006_partial_resume]
+    if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Download pre-final evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-pre-final-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/aggregate-input/pre-final
+      - name: Download R3 evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-v006-r3-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/aggregate-input/r3
+      - name: Download R4 R5 evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ep52-v006-continuity-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/v006/aggregate-input/continuity
+      - name: Aggregate v006 live references
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/aggregate-v006-live-references.mjs
+      - name: Build source-bound v006 gate report
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/generate-v006-gate-report.mjs
+      - name: Upload v006 live reference summary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ep52-v006-live-summary-${{ github.event.pull_request.head.sha }}
+          path: |
+            artifacts/ep52/v006/live-references/summary.json
+            artifacts/ep52/v006/live-references/gate-report.json
+          if-no-files-found: error
+          retention-days: 7
+
+  r6_authenticated_readback:
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ep52-r6-authenticated-readback
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Read DigitalOcean identity and inventory without mutations
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+        run: node scripts/run-r6-authenticated-readback.mjs
+      - name: Preserve sanitized readback even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-connected-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-connected/readback.json
+          if-no-files-found: error
+          retention-days: 7
+
+
+  r6_guest_transport_rehearsal:
+    needs: verify
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Rehearse machine SSH worker with isolated localhost keys
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          r6_node_binary="$(command -v node)"
+          sudo --preserve-env=EP52_SOURCE_SHA,GITHUB_REPOSITORY,GITHUB_ACTIONS "$r6_node_binary" scripts/run-r6-guest-rehearsal.mjs
+      - name: Preserve rehearsal receipt without credentials
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-guest-rehearsal-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/r6-guest-rehearsal/receipt.json
+          if-no-files-found: error
+          retention-days: 7
+

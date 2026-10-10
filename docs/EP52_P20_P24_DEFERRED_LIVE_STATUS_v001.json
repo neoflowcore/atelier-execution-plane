@@ -1,0 +1,48 @@
+{
+  "schemaId": "EP52_P20_P24_DEFERRED_LIVE_STATUS_V1",
+  "sourcePreparationStatus": "PASS",
+  "providerTransportMatrix": {
+    "LOCAL_DIRECT_WORKER": "PASS_SOURCE_AND_EXISTING_CI_EVIDENCE",
+    "VMWARE_DIRECT_WORKER": "DEFERRED_PROVIDER_LIVE_WORK",
+    "DIGITALOCEAN_DIRECT_WORKER": "PENDING_EXECUTION_SURFACE",
+    "VMWARE_GITHUB_SELF_HOSTED_JIT": "DEFERRED_PROVIDER_LIVE_WORK",
+    "DIGITALOCEAN_GITHUB_SELF_HOSTED_JIT": "PENDING_EXECUTION_SURFACE"
+  },
+  "providerStatus": {
+    "LOCAL": "PASS",
+    "VMWARE": "PENDING_LIVE",
+    "DIGITALOCEAN": "PROVIDER_LIFECYCLE_PASS_TRANSPORT_PENDING"
+  },
+  "transportStatus": {
+    "DIRECT_WORKER": "PENDING_LIVE",
+    "GITHUB_SELF_HOSTED_JIT": "PENDING_LIVE"
+  },
+  "digitalOceanProviderLifecycle": {
+    "connectionState": "CONNECTED",
+    "providerLifecycleQualification": "PASS",
+    "selectedRegion": "sgp1",
+    "selectedSize": "s-2vcpu-4gb",
+    "selectedVcpus": 2,
+    "selectedMemoryMiB": 4096,
+    "selectedDiskGiB": 80,
+    "priceHourlyUsd": 0.03571,
+    "projectedThirtyMinuteComputeUsd": 0.017855,
+    "projectScopedActivePaidCompute": 0,
+    "projectScopedOrphanedBillableResource": 0,
+    "projectScopedBillableResidue": 0,
+    "transportExecutionSurface": "UNAVAILABLE_ON_CURRENT_CONNECTED_TOOLSET"
+  },
+  "WORKER_DEVICE_LOGIN": 0,
+  "LONG_LIVED_PROVIDER_OR_GITHUB_CREDENTIAL_ON_WORKER": 0,
+  "VMWARE_MANUAL_SSH_NORMAL_PATH": 0,
+  "VMWARE_TERMUX_NORMAL_PATH": 0,
+  "P23_INTERFACE_FREEZE": "PREPARED_NOT_FINAL",
+  "P24_DEVELOPMENT_SEAL": "BLOCKED_ON_REQUIRED_LIVE_EVIDENCE",
+  "deferredLiveReasons": [
+    "VMware existing provider surface intentionally deferred until later local session",
+    "DigitalOcean provider lifecycle passed, but current connected first-party tool surface exposes provider CRUD/readback without approved remote-execution/bootstrap capability",
+    "P20 final matrix requires five real provider/transport combinations",
+    "P21 real workload matrix requires provider live execution",
+    "P22 final cleanup qualification remains tied to completed provider/transport execution receipts"
+  ]
+}

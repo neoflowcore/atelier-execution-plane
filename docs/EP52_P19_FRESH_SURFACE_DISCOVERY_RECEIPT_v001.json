@@ -1,0 +1,49 @@
+{
+  "schemaId": "EP52_P19_FRESH_SURFACE_DISCOVERY_RECEIPT_V1",
+  "sourceHead": "cf69b6c5a100b72e726e2516018a6fb9c4a7e39c",
+  "sourceTree": "767283aa5c5371525297bac26f5edb5c37b3816e",
+  "repository": "neoflowcore/atelier-execution-plane",
+  "branch": "ep52-h1-recovery",
+  "github": {
+    "connectionState": "CONNECTED_EXISTING",
+    "authReuse": "AVAILABLE",
+    "latestCanonicalVerifyPushRun": 36531854215,
+    "latestCanonicalVerifyConclusion": "success",
+    "localDirectWorkerLive": "PASS",
+    "localHeavyComputeLive": "PASS",
+    "localLinuxX64ChromiumLive": "PASS",
+    "localMultiWorkerJoinLive": "PASS"
+  },
+  "digitalOcean": {
+    "nativeProviderToolAvailable": false,
+    "officialApiSurfaceConnected": false,
+    "pluginDirectoryCandidateFound": true,
+    "candidateInstalled": false,
+    "candidateDescription": "Provision a DigitalOcean droplet as a remote Codex workspace.",
+    "officialOrFirstPartyClassificationVerified": false,
+    "selectedForExecution": false,
+    "decision": "BLOCK_LIVE_BIND_UNTIL_ALLOWED_OFFICIAL_OR_FIRST_PARTY_SURFACE_IS_VERIFIED"
+  },
+  "vmware": {
+    "nativeProviderToolAvailable": false,
+    "dedicatedPluginFound": false,
+    "trustedExecutorConnected": false,
+    "existingInfrastructureBinding": "UNRESOLVED",
+    "selectedForExecution": false,
+    "decision": "BLOCK_LIVE_BIND_UNTIL_EXISTING_INFRASTRUCTURE_OFFICIAL_API_OR_TRUSTED_EXECUTOR_IS_CONNECTED"
+  },
+  "billing": {
+    "newPaidResourceCreated": false,
+    "activePaidCompute": 0,
+    "orphanedBillableResource": 0,
+    "billableResidue": 0
+  },
+  "auth": {
+    "rawSecretChatPathUsed": false,
+    "newInteractiveAuthConsumed": 0,
+    "authInteractionBudget": 1
+  },
+  "nextLegalAction": "USER_CONNECT_ALLOWED_PROVIDER_SURFACE_THEN_HOT_REATTACH_WITHOUT_SOURCE_RESET",
+  "sourceRediscoveryRequiredAfterConnection": false,
+  "approvalResetRequiredAfterConnection": false
+}

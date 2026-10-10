@@ -1,0 +1,115 @@
+{
+  "schemaId": "EP52_V006_INTEGRATION_STATUS_V1",
+  "plan": {
+    "bundleSha256": "0962bf70904294d5449e30e17f198f8d77aeb1ef8f122c83e82069f4fc951b45",
+    "planSha256": "d93a01f6658b780f7c0ffda658cf34d62632ad5473f1bc167e1f624f61677118",
+    "validationSha256": "b55e1f1fb7cd004a5729fc73869add9d8026121f3a64e5e8fccf59a8f145bbb7"
+  },
+  "sourceIntegration": {
+    "P0_P13": "PASS",
+    "P14_P21_EVALUATORS": "PASS_SOURCE_READY",
+    "F01_F38": "PASS",
+    "credentialIndependentClosure": "PASS",
+    "vmwareRequired": false
+  },
+  "latestCanonicalLiveReferenceEvidence": {
+    "runId": 37579628713,
+    "runAttempt": 2,
+    "sourceHead": "d7e701bac026dc778f1f57e8fd49fdd55b848bae",
+    "sourceIdentityBound": true,
+    "workflowConclusion": "success",
+    "evidenceLimitations": [
+      "R2_GITHUB_RERUN_API_CALL_DID_NOT_PROVE_DIRECT_HUMAN_ACTUATION"
+    ]
+  },
+  "liveReferences": {
+    "R1": {
+      "status": "PASS",
+      "executorClass": "FIRST_PARTY_AUTOMATED",
+      "surface": "GITHUB_HOSTED_RUNNER",
+      "runtimeAuthoritativeAcceptance": "PASS",
+      "executorSelfAcceptance": false
+    },
+    "R2": {
+      "status": "PENDING",
+      "surface": "GITHUB_ACTIONS_MANUAL_RERUN",
+      "runAttempt": 2,
+      "boundedAction": "PASS",
+      "exactTarget": "PASS",
+      "preActuationFreshness": "PASS",
+      "singleUseGuard": "PASS",
+      "resumeSignalOnly": "PASS",
+      "authoritativeReadback": "PASS",
+      "trustReset": "PASS",
+      "reattest": "PASS",
+      "duplicateSingleUseMutation": 0,
+      "technicalChecks": "PASS",
+      "humanActuationProvenance": "UNVERIFIED",
+      "originObserved": "DELEGATED_GITHUB_API_RERUN",
+      "humanActuationObserved": false
+    },
+    "R3": {
+      "status": "PASS",
+      "surface": "GITHUB_ACTIONS_OIDC",
+      "durableAuthorityReuse": "PASS",
+      "ephemeralCredentialFreshMint": "PASS",
+      "freshRemintWithoutUserRefresh": "PASS",
+      "rawTokenPersisted": false
+    },
+    "R4": {
+      "status": "PASS",
+      "surface": "GITHUB_HOSTED_MULTI_JOB",
+      "partialCompletionReconcileResume": "PASS",
+      "resumeMissingOnly": true
+    },
+    "R5": {
+      "status": "PASS",
+      "surface": "GITHUB_HOSTED_MULTI_JOB",
+      "durableArtifactReattach": "PASS",
+      "duplicateExecution": 0
+    },
+    "R6": {
+      "status": "PENDING",
+      "reason": "FIRST_PARTY_REMOTE_EXECUTION_SURFACE_NOT_AVAILABLE",
+      "paidResourceCreateAllowed": false,
+      "providerCreateReadback": "PASS",
+      "providerDeleteReadback": "PASS",
+      "finalPaidResourceInventoryCount": 0,
+      "transportExecution": "NOT_EXECUTED",
+      "cleanupBoundary": "CLOSED_PROVIDER_KEY_INVENTORY_ZERO",
+      "ephemeralAccessArtifactResidue": 0
+    }
+  },
+  "predecessorExecutionPlane": {
+    "digitalOceanProviderLifecycle": "PASS",
+    "digitalOceanDirectWorker": "PENDING_EXECUTION_SURFACE",
+    "digitalOceanGithubSelfHostedJit": "PENDING_EXECUTION_SURFACE",
+    "vmwareDirectWorker": "DEFERRED_PROVIDER_LIVE_WORK",
+    "vmwareGithubSelfHostedJit": "DEFERRED_PROVIDER_LIVE_WORK",
+    "vmwareRepeatability": "DEFERRED_PROVIDER_LIVE_WORK"
+  },
+  "safety": {
+    "newPaidResourceAllowedWhileTransportNotReady": false,
+    "newPaidResourceCreatedByLatestLiveReferences": false,
+    "manualSshNormalPath": false,
+    "thirdPartyPaidBrowserAgent": false,
+    "rawCredentialChatPath": false,
+    "rawCredentialPersistedByLatestLiveReferences": false,
+    "duplicateExecutionObserved": 0,
+    "blindRetryObserved": 0,
+    "predecessorDigitalOceanEvidencePromotionToV006": false,
+    "newPaidResourceCurrentlyActive": false,
+    "ACTIVE_PAID_COMPUTE": 0,
+    "ORPHANED_BILLABLE_RESOURCE": 0,
+    "BILLABLE_RESIDUE": 0,
+    "ephemeralAccessArtifactResidue": 0,
+    "ephemeralAccessArtifactResidueNonBillable": false
+  },
+  "activeNext": [
+    "R2_INDEPENDENT_HUMAN_ACTUATION_PROVENANCE",
+    "R6_FIRST_PARTY_REMOTE_EXECUTION_SURFACE_REATTACH",
+    "R6_PRE_PROVISION_ADMISSION_THEN_AUTHORITATIVE_READBACK_AND_RESIDUE_ZERO"
+  ],
+  "currentDecision": "R1_R3_R4_R5_LIVE_EVIDENCE_PASS_R2_PROVENANCE_UNVERIFIED_R6_SURFACE_PENDING",
+  "horizon2StartAllowed": false
+}
