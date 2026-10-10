@@ -190,10 +190,16 @@ jobs:
         env:
           EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/aggregate-v006-live-references.mjs
+      - name: Build source-bound v006 gate report
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/generate-v006-gate-report.mjs
       - name: Upload v006 live reference summary
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ep52-v006-live-summary-${{ github.event.pull_request.head.sha }}
-          path: artifacts/ep52/v006/live-references/summary.json
+          path: |
+            artifacts/ep52/v006/live-references/summary.json
+            artifacts/ep52/v006/live-references/gate-report.json
           if-no-files-found: error
           retention-days: 7
