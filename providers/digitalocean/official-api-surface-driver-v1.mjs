@@ -8,7 +8,7 @@ const tags=(e,l)=>[`atelier-execution:${e}`,`atelier-lease:${l}`];
 
 export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMetadata,surfaceClass="OFFICIAL_NATIVE_API"}={}){
   if(typeof request!=="function"||typeof getAuthMetadata!=="function")throw new Error("DIGITALOCEAN_SURFACE_IO_REQUIRED");
-  let resourceId=null,childCount=0,discovery=null;
+  let resourceId=null,childCount=null,discovery=null;
   const call=async(method,path,opts={})=>{
     const r=await request({method,path,query:opts.query??null,body:opts.body??null,tokenMaterialAllowed:false});
     const allowed=opts.allowed??[200];
@@ -16,8 +16,21 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
     return r;
   };
   const owned=async(executionId,leaseId)=>{
-    const r=await call("GET","/v2/droplets",{query:{tag_name:`atelier-execution:${executionId}`,per_page:200}});
-    return normalizeDigitalOceanInventoryV1(r.body?.droplets??[]).filter(x=>x.tags.includes(`atelier-lease:${leaseId}`));
+    if(typeof executionId!=="string"||!executionId||typeof leaseId!=="string"||!leaseId)throw new Error("DIGITALOCEAN_OWNERSHIP_BINDING_REQUIRED");
+    let query={tag_name:`atelier-execution:${executionId}`,per_page:200};
+    const items=[],seen=new Set();
+    for(let page=0;page<100;page++){
+      const key=JSON.stringify(query);if(seen.has(key))throw new Error("DIGITALOCEAN_PAGINATION_LOOP");seen.add(key);
+      const r=await call("GET","/v2/droplets",{query});
+      if(!Array.isArray(r.body?.droplets))throw new Error("DIGITALOCEAN_INVENTORY_SCHEMA_REQUIRED");
+      items.push(...r.body.droplets);
+      const next=r.body.links?.pages?.next;
+      if(!next)return normalizeDigitalOceanInventoryV1(items).filter(x=>tags(executionId,leaseId).every(t=>x.tags.includes(t)));
+      const u=new URL(next,"https://api.digitalocean.com");
+      if(u.origin!=="https://api.digitalocean.com"||u.pathname!=="/v2/droplets"||u.username||u.password||u.hash||u.searchParams.get("tag_name")!==query.tag_name||u.searchParams.get("per_page")!=="200"||!/^[1-9][0-9]*$/.test(u.searchParams.get("page")??"")||[...u.searchParams.keys()].some(k=>!["tag_name","per_page","page"].includes(k)))throw new Error("DIGITALOCEAN_PAGINATION_TARGET_DENIED");
+      query={tag_name:query.tag_name,per_page:200,page:Number(u.searchParams.get("page"))};
+    }
+    throw new Error("DIGITALOCEAN_PAGINATION_LIMIT");
   };
   return Object.freeze({
     provider:"DIGITALOCEAN",surfaceClass,rawSecretMaterialExposed:false,browserNormalPath:false,manualSshNormalPath:false,
@@ -50,14 +63,27 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
     },
     async reconcileUnknown({plan,context}){const xs=await owned(plan.executionId,context.leaseId);if(xs.length>1)return {status:"BLOCKED_AMBIGUOUS",resourceCountDelta:xs.length,newPaidResourceCreated:true};if(xs.length===1){resourceId=xs[0].resourceId;return {status:"RECONCILED",resourceCountDelta:1,newPaidResourceCreated:true,resourceId}}return {status:"RECONCILED",resourceCountDelta:0,newPaidResourceCreated:false}},
     async authoritativeReadback({plan,context}){if(!resourceId)throw new Error("DIGITALOCEAN_RESOURCE_ID_REQUIRED");const r=await call("GET",`/v2/droplets/${resourceId}`);const d=r.body?.droplet;if(d?.status!=="active")throw new Error("DIGITALOCEAN_DROPLET_NOT_ACTIVE");for(const t of tags(plan.executionId,context.leaseId))if(!(d.tags??[]).includes(t))throw new Error("DIGITALOCEAN_TAG_READBACK_MISMATCH");return {resourceId,status:d.status,ipv4:(d.networks?.v4??[]).map(x=>x.ip_address),receiptDigest:sha({id:resourceId,status:d.status,tags:[...(d.tags??[])].sort()})}},
-    async cleanup(){
+    async cleanup({plan,context}={}){
       if(!resourceId)return {ephemeralCredentialResidue:false,childBillableResourceCount:0};
-      const r=await call("GET",`/v2/droplets/${resourceId}/destroy_with_associated_resources`);
-      childCount=["snapshots","volumes","volume_snapshots","reserved_ips"].reduce((n,k)=>n+(Array.isArray(r.body?.[k])?r.body[k].length:0),0);
+      const xs=await owned(plan?.executionId,context?.leaseId);
+      if(!xs.some(x=>x.resourceId===resourceId))throw new Error("DIGITALOCEAN_CLEANUP_OWNERSHIP_NOT_VERIFIED");
+      childCount=null;
+      try{
+        const r=await call("GET",`/v2/droplets/${resourceId}/destroy_with_associated_resources`);
+        const keys=["snapshots","volumes","volume_snapshots","reserved_ips"];
+        if(!keys.every(k=>Array.isArray(r.body?.[k])))throw new Error("DIGITALOCEAN_CHILD_INVENTORY_SCHEMA_REQUIRED");
+        childCount=keys.reduce((n,k)=>n+r.body[k].length,0);
+      }catch{
+        // Release owned paid compute even when the child scan fails. Preserve
+        // uncertainty and reject zero-residue acceptance after deletion.
+        await call("DELETE",`/v2/droplets/${resourceId}`,{allowed:[204]});
+        throw new Error("DIGITALOCEAN_CHILD_INVENTORY_UNKNOWN_AFTER_DELETE");
+      }
       await call("DELETE",`/v2/droplets/${resourceId}`,{allowed:[204]});
       return {ephemeralCredentialResidue:false,childBillableResourceCount:childCount};
     },
     async deleteReadback({plan,context}){if(resourceId){const r=await request({method:"GET",path:`/v2/droplets/${resourceId}`,query:null,body:null,tokenMaterialAllowed:false});if(r.status!==404)return {resourceAbsent:false,status:r.status}}const xs=await owned(plan.executionId,context.leaseId);return {resourceAbsent:xs.length===0,ownedDropletCount:xs.length}},
-    async residueScan({plan,context}){const xs=await owned(plan.executionId,context.leaseId);return {ACTIVE_PAID_COMPUTE:xs.length,ORPHANED_BILLABLE_RESOURCE:childCount,BILLABLE_RESIDUE:xs.length+childCount}}
+    async residueScan({plan,context}){const xs=await owned(plan.executionId,context.leaseId);if(resourceId&&childCount===null)throw new Error("DIGITALOCEAN_CHILD_INVENTORY_UNKNOWN");return {ACTIVE_PAID_COMPUTE:xs.length,ORPHANED_BILLABLE_RESOURCE:childCount??0,BILLABLE_RESIDUE:xs.length+(childCount??0)}}
   });
 }
+

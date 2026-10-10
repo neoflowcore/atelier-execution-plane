@@ -37,3 +37,16 @@ test('transport exceptions are sanitized instead of leaking request headers',asy
   const f=io({fail:'Bearer fixture-secret'});
   await assert.rejects(createAuthenticatedDigitalOceanReadbackV1({token:'fixture-secret',fetchImpl:f.fetch}).collect(binding),e=>e.message==='DO_READ_TRANSPORT_FAILED');
 });
+test('candidate price uses billing floor and excludes over-budget sizes',async()=>{
+  for(const [price,expected] of [[0.00595,10],[0.3,null]]){
+    const f=io();const fetchImpl=async(url,options)=>{
+      const u=new URL(url);
+      if(u.pathname==='/v2/sizes')return {status:200,json:async()=>({sizes:[{slug:'small',available:true,vcpus:1,memory:512,disk:10,regions:['sgp1'],price_hourly:price}]})};
+      if(u.pathname==='/v2/regions')return {status:200,json:async()=>({regions:[{slug:'sgp1',available:true}]})};
+      return f.fetch(url,options);
+    };
+    const r=await createAuthenticatedDigitalOceanReadbackV1({token:'fixture',fetchImpl}).collect(binding);
+    assert.equal(r.candidatePricing?.projectedMilliUsd??null,expected);
+    assert.equal(r.paidResourceCreateAllowed,false);
+  }
+});

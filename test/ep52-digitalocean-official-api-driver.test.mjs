@@ -9,4 +9,43 @@ test("selector refuses over-cap sizes",()=>{assert.throws(()=>selectMinimumDropl
 
 function fakeApi(){const requests=[];let droplet=null;let deleted=false;return {requests,async request({method,path,query,body}){requests.push({method,path,query,body});if(method==="GET"&&path==="/v2/account")return {status:200,body:{account:{uuid:"acct-1",email:"u@example.com",droplet_limit:10,status:"active"}}};if(method==="GET"&&path==="/v2/sizes")return {status:200,body:{sizes:[{slug:"s-2vcpu-4gb",available:true,vcpus:2,memory:4096,disk:80,price_hourly:0.036,regions:["sgp1"]}]}};if(method==="GET"&&path==="/v2/regions")return {status:200,body:{regions:[{slug:"sgp1",available:true}]}};if(method==="GET"&&path==="/v2/images")return {status:200,body:{images:[{id:24,slug:"ubuntu-24-04-x64",distribution:"Ubuntu",name:"24.04 x64",public:true,status:"available"}]}};if(method==="GET"&&path==="/v2/droplets")return {status:200,body:{droplets:droplet&&!deleted?[droplet]:[]}};if(method==="POST"&&path==="/v2/droplets"){droplet={id:101,name:body.name,status:"active",region:{slug:body.region},size:{slug:body.size},tags:body.tags,networks:{v4:[{ip_address:"203.0.113.10"}]}};return {status:202,body:{droplet}}}if(method==="GET"&&path==="/v2/droplets/101")return deleted?{status:404,body:{}}:{status:200,body:{droplet}};if(method==="GET"&&path==="/v2/droplets/101/destroy_with_associated_resources")return {status:200,body:{snapshots:[],volumes:[],volume_snapshots:[],reserved_ips:[]}};if(method==="DELETE"&&path==="/v2/droplets/101"){deleted=true;return {status:204,body:null}}throw new Error(`UNEXPECTED:${method}:${path}`)},async getAuthMetadata(){return {grantedScopes:DIGITALOCEAN_MINIMUM_LIVE_SCOPES}}}};
 
+const binding={plan:{executionId:'ep52-do-test'},context:{leaseId:'lease1'}};
+async function prepared(override){
+  const f=fakeApi();const d=createDigitalOceanOfficialApiSurfaceDriverV1({request:async req=>(await override?.(req))??f.request(req),getAuthMetadata:f.getAuthMetadata});
+  await d.mutateMinimalDelta({diff:{action:'CREATE',spec:{executionId:binding.plan.executionId,region:'sgp1',sizeSlug:'small',imageId:'ubuntu',userData:'fixture',tags:['atelier-execution:ep52-do-test','atelier-lease:lease1']},projectedCostMilliUsd:10}});
+  return {f,d};
+}
+test('failed child scan still releases owned compute and never asserts residue zero',async()=>{
+  const {f,d}=await prepared(req=>req.path.endsWith('/destroy_with_associated_resources')?{status:503,body:{}}:null);
+  await assert.rejects(d.cleanup(binding),/CHILD_INVENTORY_UNKNOWN_AFTER_DELETE/);
+  assert.equal(f.requests.filter(r=>r.method==='DELETE').length,1);
+  assert.equal((await d.deleteReadback(binding)).resourceAbsent,true);
+  await assert.rejects(d.residueScan(binding),/CHILD_INVENTORY_UNKNOWN/);
+});
+test('malformed child scan cannot default missing collections to zero',async()=>{
+  const {f,d}=await prepared(req=>req.path.endsWith('/destroy_with_associated_resources')?{status:200,body:{snapshots:[]}}:null);
+  await assert.rejects(d.cleanup(binding),/CHILD_INVENTORY_UNKNOWN_AFTER_DELETE/);
+  assert.equal(f.requests.filter(r=>r.method==='DELETE').length,1);
+  await assert.rejects(d.residueScan(binding),/CHILD_INVENTORY_UNKNOWN/);
+});
+test('changed resource ownership blocks destructive cleanup',async()=>{
+  const {f,d}=await prepared(req=>req.path==='/v2/droplets'&&req.method==='GET'?{status:200,body:{droplets:[{id:101,status:'active',tags:['foreign']}]}}:null);
+  await assert.rejects(d.cleanup(binding),/CLEANUP_OWNERSHIP_NOT_VERIFIED/);
+  assert.equal(f.requests.filter(r=>r.method==='DELETE').length,0);
+});
+test('unscanned tracked resources cannot have a clean residue receipt',async()=>{
+  const {d}=await prepared();await assert.rejects(d.residueScan(binding),/CHILD_INVENTORY_UNKNOWN/);
+});
+test('owned inventory discovers duplicate resources on a later page',async()=>{
+  const d=createDigitalOceanOfficialApiSurfaceDriverV1({getAuthMetadata:async()=>({}),request:async({query})=>({status:200,body:{droplets:[{id:query.page?102:101,status:'active',tags:['atelier-execution:ep52-do-test','atelier-lease:lease1']}],...(!query.page?{links:{pages:{next:'https://api.digitalocean.com/v2/droplets?tag_name=atelier-execution%3Aep52-do-test&per_page=200&page=2'}}}:{})}})});
+  await assert.rejects(d.readCurrent(binding),/AMBIGUOUS_OWNED_DROPLETS/);
+});
+test('pagination rejects foreign hosts and changed ownership filters',async()=>{
+  for(const next of ['https://foreign.invalid/v2/droplets?tag_name=atelier-execution%3Aep52-do-test&per_page=200&page=2','https://api.digitalocean.com/v2/droplets?tag_name=foreign&per_page=200&page=2']){
+    let calls=0;const d=createDigitalOceanOfficialApiSurfaceDriverV1({getAuthMetadata:async()=>({}),request:async()=>{calls++;return {status:200,body:{droplets:[],links:{pages:{next}}}}}});
+    await assert.rejects(d.readCurrent(binding),/PAGINATION_TARGET_DENIED/);assert.equal(calls,1);
+  }
+});
+
 test("official API driver performs discovery create readback cleanup and zero residue",async()=>{const f=fakeApi();const d=createDigitalOceanOfficialApiSurfaceDriverV1({request:f.request,getAuthMetadata:f.getAuthMetadata});const plan={executionId:"ep52-do-test"};const context={leaseId:"lease1",requirements:{minCpu:2,minMemoryMiB:4096,minDiskGiB:20},regionPreference:"sgp1",imageSlug:"ubuntu-24-04-x64",ttlSeconds:1800,costCapMilliUsd:100,bootstrapBundleSha256:"a".repeat(64)};const discovery=await d.discover({plan,context});assert.equal(discovery.size.slug,"s-2vcpu-4gb");assert.equal(discovery.size.projectedCostMilliUsd,18);const current=await d.readCurrent({plan,context});const diff=await d.diffDesired({plan,context,current});const mutation=await d.mutateMinimalDelta({diff});assert.equal(mutation.newPaidResourceCreated,true);const readback=await d.authoritativeReadback({plan,context});assert.equal(readback.status,"active");const cleanup=await d.cleanup({plan,context});assert.equal(cleanup.childBillableResourceCount,0);const absent=await d.deleteReadback({plan,context});assert.equal(absent.resourceAbsent,true);const residue=await d.residueScan({plan,context});assert.deepEqual([residue.ACTIVE_PAID_COMPUTE,residue.ORPHANED_BILLABLE_RESOURCE,residue.BILLABLE_RESIDUE],[0,0,0])});
+

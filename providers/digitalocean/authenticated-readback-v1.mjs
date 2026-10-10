@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {estimateDigitalOceanDropletCostMilliUsdV1} from './cost-aware-selector-v1.mjs';
 
 const BASE='https://api.digitalocean.com';
 const routes={droplets:['/v2/droplets','droplets'],volumes:['/v2/volumes','volumes'],
@@ -43,14 +44,14 @@ export function createAuthenticatedDigitalOceanReadbackV1({token,fetchImpl=fetch
     const lists={};
     for(const [kind,[path,key]] of Object.entries(routes))lists[kind]=await list(path,key);
     const inventory=Object.fromEntries(['droplets','volumes','snapshots','reservedIps','images'].map(k=>[k,{count:lists[k].length,digest:digest(lists[k])}]));
-    const candidates=lists.sizes.filter(s=>s.available===true&&s.vcpus>=1&&s.memory>=512&&s.disk>=10&&s.regions?.includes('sgp1')&&Number.isFinite(s.price_hourly)&&s.price_hourly>=0)
+    const candidates=lists.sizes.filter(s=>s.available===true&&s.vcpus>=1&&s.memory>=512&&s.disk>=10&&s.regions?.includes('sgp1')&&Number.isFinite(s.price_hourly)&&s.price_hourly>0&&estimateDigitalOceanDropletCostMilliUsdV1({priceHourly:s.price_hourly,ttlSeconds:1800})<=100)
       .sort((a,b)=>a.price_hourly-b.price_hourly||a.slug.localeCompare(b.slug));
     const minimum=lists.regions.some(r=>r.slug==='sgp1'&&r.available===true)?candidates[0]:null;
     const zero=['droplets','volumes','snapshots','reservedIps','images'].every(k=>lists[k].length===0);
     return {schemaId:'EP52_R6_AUTHENTICATED_READBACK_V1',observedAt:new Date().toISOString(),
       source:{sha:sourceSha,tree:sourceTree,planSha256},executor:{class:'GITHUB_HOSTED_RUNNER',runId,runAttempt},
       account:{identityMatched:true,status:'active'},connection:'AUTHENTICATED_API_READBACK_PASS',inventory,
-      candidatePricing:minimum?{region:'sgp1',sizeSlug:minimum.slug,hourlyUsd:minimum.price_hourly,ttlSeconds:1800,projectedMilliUsd:Math.ceil(minimum.price_hourly*500),costCapMilliUsd:100}:null,
+      candidatePricing:minimum?{region:'sgp1',sizeSlug:minimum.slug,hourlyUsd:minimum.price_hourly,ttlSeconds:1800,projectedMilliUsd:estimateDigitalOceanDropletCostMilliUsdV1({priceHourly:minimum.price_hourly,ttlSeconds:1800}),costCapMilliUsd:100}:null,
       inspectedInventoryZero:zero,accountWideResidueZeroAttested:false,retentionClassification:'NOT_ATTESTED',
       exactTokenScopes:'NOT_ATTESTED',guestTransport:'NOT_ATTESTED',cleanupCapability:'NOT_ATTESTED',
       blockers:['EXACT_SCOPE_ATTESTATION_REQUIRED','GUEST_TRANSPORT_ATTESTATION_REQUIRED','CLEANUP_CAPABILITY_REQUIRED','RETENTION_CLASSIFICATION_REQUIRED',...(!zero?['NONZERO_INVENTORY_RECONCILIATION_REQUIRED']:[]),...(!minimum?['PRICING_CANDIDATE_UNAVAILABLE']:[])],
