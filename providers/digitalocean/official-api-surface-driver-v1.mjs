@@ -55,7 +55,7 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
       let spec=compileDigitalOceanProvisionSpecV1({executionId:plan.executionId,leaseId:context.leaseId,region:discovery.region,sizeSlug:discovery.size.slug,imageId:discovery.image.slug,bootstrapBundleSha256:context.bootstrapBundleSha256,ttlSeconds:context.ttlSeconds,costCapMilliUsd:context.costCapMilliUsd});
       if(context.guestBootstrap){
         const m=context.guestBootstrap.metadata;
-        if(m?.schemaId!=="DO_EPHEMERAL_GUEST_BOOTSTRAP_V1"||m.executionId!==plan.executionId||m.leaseId!==context.leaseId||m.sourceSha!==plan.sourceHead||m.planSha256!==context.planSha256||m.ttlSeconds!==context.ttlSeconds||m.expiresAtMs<=Date.now()||typeof context.guestBootstrap.materializeUserData!=="function")throw new Error("DIGITALOCEAN_GUEST_BOOTSTRAP_BINDING_REQUIRED");
+        if(m?.schemaId!=="DO_EPHEMERAL_GUEST_BOOTSTRAP_V1"||m.executionId!==plan.executionId||m.leaseId!==context.leaseId||m.sourceSha!==plan.sourceHead||m.planSha256!==context.planSha256||m.ttlSeconds!==context.ttlSeconds||m.expiresAtMs<=Date.now()||typeof context.guestBootstrap.materializeUserData!=="function"||typeof context.guestBootstrap.revoke!=="function")throw new Error("DIGITALOCEAN_GUEST_BOOTSTRAP_BINDING_REQUIRED");
         spec={...spec,userData:null,guestBootstrap:m};
       }
       return current.droplets.length?{action:"NOOP",resourceId:current.droplets[0].resourceId,spec}:{action:"CREATE",spec,projectedCostMilliUsd:discovery.size.projectedCostMilliUsd};
@@ -75,6 +75,7 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
     async reconcileUnknown({plan,context}){const xs=await owned(plan.executionId,context.leaseId);if(xs.length>1)return {status:"BLOCKED_AMBIGUOUS",resourceCountDelta:xs.length,newPaidResourceCreated:true};if(xs.length===1){resourceId=xs[0].resourceId;return {status:"RECONCILED",resourceCountDelta:1,newPaidResourceCreated:true,resourceId}}return {status:"RECONCILED",resourceCountDelta:0,newPaidResourceCreated:false}},
     async authoritativeReadback({plan,context}){if(!resourceId)throw new Error("DIGITALOCEAN_RESOURCE_ID_REQUIRED");const r=await call("GET",`/v2/droplets/${resourceId}`);const d=r.body?.droplet;if(d?.status!=="active")throw new Error("DIGITALOCEAN_DROPLET_NOT_ACTIVE");for(const t of tags(plan.executionId,context.leaseId))if(!(d.tags??[]).includes(t))throw new Error("DIGITALOCEAN_TAG_READBACK_MISMATCH");return {resourceId,status:d.status,ipv4:(d.networks?.v4??[]).map(x=>x.ip_address),receiptDigest:sha({id:resourceId,status:d.status,tags:[...(d.tags??[])].sort()})}},
     async cleanup({plan,context}={}){
+      try{
       if(!resourceId)return {ephemeralCredentialResidue:false,childBillableResourceCount:0};
       const xs=await owned(plan?.executionId,context?.leaseId);
       if(!xs.some(x=>x.resourceId===resourceId))throw new Error("DIGITALOCEAN_CLEANUP_OWNERSHIP_NOT_VERIFIED");
@@ -92,6 +93,7 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
       }
       await call("DELETE",`/v2/droplets/${resourceId}`,{allowed:[204]});
       return {ephemeralCredentialResidue:false,childBillableResourceCount:childCount};
+      }finally{context?.guestBootstrap?.revoke?.();}
     },
     async deleteReadback({plan,context}){if(resourceId){const r=await request({method:"GET",path:`/v2/droplets/${resourceId}`,query:null,body:null,tokenMaterialAllowed:false});if(r.status!==404)return {resourceAbsent:false,status:r.status}}const xs=await owned(plan.executionId,context.leaseId);return {resourceAbsent:xs.length===0,ownedDropletCount:xs.length}},
     async residueScan({plan,context}){const xs=await owned(plan.executionId,context.leaseId);if(resourceId&&childCount===null)throw new Error("DIGITALOCEAN_CHILD_INVENTORY_UNKNOWN");return {ACTIVE_PAID_COMPUTE:xs.length,ORPHANED_BILLABLE_RESOURCE:childCount??0,BILLABLE_RESIDUE:xs.length+(childCount??0)}}

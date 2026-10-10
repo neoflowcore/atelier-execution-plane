@@ -21,7 +21,7 @@ test('guest bootstrap is source bound and materialized only into the provider re
   const diff=await d.diffDesired({plan,context,current});assert.equal(diff.spec.userData,null);assert.equal(JSON.stringify(diff).includes('fixture-private-host'),false);
   const mutation=await d.mutateMinimalDelta({diff,context});assert.equal(JSON.stringify(mutation).includes('fixture-private-host'),false);
   assert.ok(f.requests.find(r=>r.method==='POST').body.user_data.includes('fixture-private-host'));
-  context.guestBootstrap.revoke();await assert.rejects(d.mutateMinimalDelta({diff,context}),/REVOKED/);
+  await d.cleanup({plan,context});await assert.rejects(d.mutateMinimalDelta({diff,context}),/REVOKED/);
   assert.equal(f.requests.filter(r=>r.method==='POST').length,1);
   await assert.rejects(d.diffDesired({plan:{...plan,sourceHead:'d'.repeat(40)},context,current}),/BOOTSTRAP_BINDING_REQUIRED/);
 });
@@ -36,6 +36,12 @@ test('failed child scan still releases owned compute and never asserts residue z
   assert.equal(f.requests.filter(r=>r.method==='DELETE').length,1);
   assert.equal((await d.deleteReadback(binding)).resourceAbsent,true);
   await assert.rejects(d.residueScan(binding),/CHILD_INVENTORY_UNKNOWN/);
+});
+test('bootstrap revocation still runs after failed provider cleanup',async()=>{
+  const {d}=await prepared(req=>req.method==='DELETE'?{status:503,body:{}}:null);
+  let revoked=false;
+  await assert.rejects(d.cleanup({plan:binding.plan,context:{...binding.context,guestBootstrap:{revoke(){revoked=true;}}}}),/HTTP_STATUS_UNEXPECTED/);
+  assert.equal(revoked,true);
 });
 test('malformed child scan cannot default missing collections to zero',async()=>{
   const {f,d}=await prepared(req=>req.path.endsWith('/destroy_with_associated_resources')?{status:200,body:{snapshots:[]}}:null);
