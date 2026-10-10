@@ -52,12 +52,23 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
     async readCurrent({plan,context}){const xs=await owned(plan.executionId,context.leaseId);if(xs.length>1)throw new Error("DIGITALOCEAN_AMBIGUOUS_OWNED_DROPLETS");if(xs[0])resourceId=xs[0].resourceId;return {droplets:xs}},
     async diffDesired({plan,context,current}){
       if(!discovery)throw new Error("DIGITALOCEAN_DISCOVERY_REQUIRED");
-      const spec=compileDigitalOceanProvisionSpecV1({executionId:plan.executionId,leaseId:context.leaseId,region:discovery.region,sizeSlug:discovery.size.slug,imageId:discovery.image.slug,bootstrapBundleSha256:context.bootstrapBundleSha256,ttlSeconds:context.ttlSeconds,costCapMilliUsd:context.costCapMilliUsd});
+      let spec=compileDigitalOceanProvisionSpecV1({executionId:plan.executionId,leaseId:context.leaseId,region:discovery.region,sizeSlug:discovery.size.slug,imageId:discovery.image.slug,bootstrapBundleSha256:context.bootstrapBundleSha256,ttlSeconds:context.ttlSeconds,costCapMilliUsd:context.costCapMilliUsd});
+      if(context.guestBootstrap){
+        const m=context.guestBootstrap.metadata;
+        if(m?.schemaId!=="DO_EPHEMERAL_GUEST_BOOTSTRAP_V1"||m.executionId!==plan.executionId||m.leaseId!==context.leaseId||m.sourceSha!==plan.sourceHead||m.planSha256!==context.planSha256||m.ttlSeconds!==context.ttlSeconds||m.expiresAtMs<=Date.now()||typeof context.guestBootstrap.materializeUserData!=="function")throw new Error("DIGITALOCEAN_GUEST_BOOTSTRAP_BINDING_REQUIRED");
+        spec={...spec,userData:null,guestBootstrap:m};
+      }
       return current.droplets.length?{action:"NOOP",resourceId:current.droplets[0].resourceId,spec}:{action:"CREATE",spec,projectedCostMilliUsd:discovery.size.projectedCostMilliUsd};
     },
-    async mutateMinimalDelta({diff}){
+    async mutateMinimalDelta({diff,context={}}){
       if(diff.action==="NOOP"){resourceId=diff.resourceId;return {noOp:true,resourceCountDelta:0,newPaidResourceCreated:false,resourceId}}
-      const r=await call("POST","/v2/droplets",{allowed:[202],body:{name:`atelier-${diff.spec.executionId}`.slice(0,63),region:diff.spec.region,size:diff.spec.sizeSlug,image:diff.spec.imageId,user_data:diff.spec.userData,tags:diff.spec.tags,backups:false,monitoring:false,ipv6:false}});
+      let userData=diff.spec.userData;
+      if(diff.spec.guestBootstrap){
+        if(context.guestBootstrap?.metadata?.userDataSha256!==diff.spec.guestBootstrap.userDataSha256)throw new Error("DIGITALOCEAN_GUEST_BOOTSTRAP_REFERENCE_MISMATCH");
+        userData=context.guestBootstrap.materializeUserData();
+        if(createHash("sha256").update(userData).digest("hex")!==diff.spec.guestBootstrap.userDataSha256)throw new Error("DIGITALOCEAN_GUEST_BOOTSTRAP_DIGEST_MISMATCH");
+      }
+      const r=await call("POST","/v2/droplets",{allowed:[202],body:{name:`atelier-${diff.spec.executionId}`.slice(0,63),region:diff.spec.region,size:diff.spec.sizeSlug,image:diff.spec.imageId,user_data:userData,tags:diff.spec.tags,backups:false,monitoring:false,ipv6:false}});
       if(r.body?.droplet?.id==null)throw new Error("DIGITALOCEAN_CREATE_ID_REQUIRED");
       resourceId=String(r.body.droplet.id);return {noOp:false,resourceCountDelta:1,newPaidResourceCreated:true,resourceId,projectedCostMilliUsd:diff.projectedCostMilliUsd};
     },

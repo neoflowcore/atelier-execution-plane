@@ -2,6 +2,7 @@ import test from "node:test";import assert from "node:assert/strict";
 import {estimateDigitalOceanDropletCostMilliUsdV1,selectMinimumDropletForLiveQualificationV1} from "../providers/digitalocean/cost-aware-selector-v1.mjs";
 import {createDigitalOceanOfficialApiSurfaceDriverV1} from "../providers/digitalocean/official-api-surface-driver-v1.mjs";
 import {DIGITALOCEAN_MINIMUM_LIVE_SCOPES} from "../providers/digitalocean/api-execution-v1.mjs";
+import {createDigitalOceanGuestBootstrapV1} from '../providers/digitalocean/guest-bootstrap-v1.mjs';
 
 test("cost projection respects billing floor and TTL",()=>{assert.equal(estimateDigitalOceanDropletCostMilliUsdV1({priceHourly:0.006,ttlSeconds:30}),10);assert.equal(estimateDigitalOceanDropletCostMilliUsdV1({priceHourly:0.036,ttlSeconds:1800}),18)});
 test("selector chooses minimum eligible size within cost cap",()=>{const s=selectMinimumDropletForLiveQualificationV1({requirements:{minCpu:2,minMemoryMiB:4096,minDiskGiB:20},sizes:[{slug:"small",available:true,vcpus:1,memory:1024,disk:25,price_hourly:0.006,regions:["sgp1"]},{slug:"heavy-a",available:true,vcpus:2,memory:4096,disk:20,price_hourly:0.036,regions:["sgp1"]},{slug:"heavy-b",available:true,vcpus:4,memory:8192,disk:40,price_hourly:0.071,regions:["sgp1"]}],region:"sgp1",ttlSeconds:1800,costCapMilliUsd:100});assert.equal(s.slug,"heavy-a");assert.equal(s.projectedCostMilliUsd,18)});
@@ -10,6 +11,20 @@ test("selector refuses over-cap sizes",()=>{assert.throws(()=>selectMinimumDropl
 function fakeApi(){const requests=[];let droplet=null;let deleted=false;return {requests,async request({method,path,query,body}){requests.push({method,path,query,body});if(method==="GET"&&path==="/v2/account")return {status:200,body:{account:{uuid:"acct-1",email:"u@example.com",droplet_limit:10,status:"active"}}};if(method==="GET"&&path==="/v2/sizes")return {status:200,body:{sizes:[{slug:"s-2vcpu-4gb",available:true,vcpus:2,memory:4096,disk:80,price_hourly:0.036,regions:["sgp1"]}]}};if(method==="GET"&&path==="/v2/regions")return {status:200,body:{regions:[{slug:"sgp1",available:true}]}};if(method==="GET"&&path==="/v2/images")return {status:200,body:{images:[{id:24,slug:"ubuntu-24-04-x64",distribution:"Ubuntu",name:"24.04 x64",public:true,status:"available"}]}};if(method==="GET"&&path==="/v2/droplets")return {status:200,body:{droplets:droplet&&!deleted?[droplet]:[]}};if(method==="POST"&&path==="/v2/droplets"){droplet={id:101,name:body.name,status:"active",region:{slug:body.region},size:{slug:body.size},tags:body.tags,networks:{v4:[{ip_address:"203.0.113.10"}]}};return {status:202,body:{droplet}}}if(method==="GET"&&path==="/v2/droplets/101")return deleted?{status:404,body:{}}:{status:200,body:{droplet}};if(method==="GET"&&path==="/v2/droplets/101/destroy_with_associated_resources")return {status:200,body:{snapshots:[],volumes:[],volume_snapshots:[],reserved_ips:[]}};if(method==="DELETE"&&path==="/v2/droplets/101"){deleted=true;return {status:204,body:null}}throw new Error(`UNEXPECTED:${method}:${path}`)},async getAuthMetadata(){return {grantedScopes:DIGITALOCEAN_MINIMUM_LIVE_SCOPES}}}};
 
 const binding={plan:{executionId:'ep52-do-test'},context:{leaseId:'lease1'}};
+test('guest bootstrap is source bound and materialized only into the provider request',async()=>{
+  const f=fakeApi();const d=createDigitalOceanOfficialApiSurfaceDriverV1({request:f.request,getAuthMetadata:f.getAuthMetadata});
+  const plan={executionId:'ep52-do-test',sourceHead:'a'.repeat(40)};
+  const context={leaseId:'lease1',requirements:{minCpu:2,minMemoryMiB:4096,minDiskGiB:20},regionPreference:'sgp1',imageSlug:'ubuntu-24-04-x64',ttlSeconds:1800,costCapMilliUsd:100,bootstrapBundleSha256:'c'.repeat(64),planSha256:'b'.repeat(64)};
+  const privateKey=['-----BEGIN','OPENSSH','PRIVATE KEY-----'].join(' ')+'\nfixture-private-host\n'+['-----END','OPENSSH','PRIVATE KEY-----'].join(' ')+'\n';
+  context.guestBootstrap=createDigitalOceanGuestBootstrapV1({executionId:plan.executionId,leaseId:context.leaseId,sourceSha:plan.sourceHead,planSha256:context.planSha256,ttlSeconds:1800,clientPublicKey:'ssh-ed25519 AAAA',hostPublicKey:'ssh-ed25519 BBBB',hostPrivateKey:privateKey});
+  await d.discover({plan,context});const current=await d.readCurrent({plan,context});
+  const diff=await d.diffDesired({plan,context,current});assert.equal(diff.spec.userData,null);assert.equal(JSON.stringify(diff).includes('fixture-private-host'),false);
+  const mutation=await d.mutateMinimalDelta({diff,context});assert.equal(JSON.stringify(mutation).includes('fixture-private-host'),false);
+  assert.ok(f.requests.find(r=>r.method==='POST').body.user_data.includes('fixture-private-host'));
+  context.guestBootstrap.revoke();await assert.rejects(d.mutateMinimalDelta({diff,context}),/REVOKED/);
+  assert.equal(f.requests.filter(r=>r.method==='POST').length,1);
+  await assert.rejects(d.diffDesired({plan:{...plan,sourceHead:'d'.repeat(40)},context,current}),/BOOTSTRAP_BINDING_REQUIRED/);
+});
 async function prepared(override){
   const f=fakeApi();const d=createDigitalOceanOfficialApiSurfaceDriverV1({request:async req=>(await override?.(req))??f.request(req),getAuthMetadata:f.getAuthMetadata});
   await d.mutateMinimalDelta({diff:{action:'CREATE',spec:{executionId:binding.plan.executionId,region:'sgp1',sizeSlug:'small',imageId:'ubuntu',userData:'fixture',tags:['atelier-execution:ep52-do-test','atelier-lease:lease1']},projectedCostMilliUsd:10}});

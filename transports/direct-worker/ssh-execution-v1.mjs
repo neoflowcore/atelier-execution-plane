@@ -1,10 +1,33 @@
 import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {lstat} from 'node:fs/promises';
+import {lstat,readFile} from 'node:fs/promises';
 import {isIP} from 'node:net';
 import {validateWorkerJobV1} from './index.mjs';
 
 const hash=x=>createHash('sha256').update(x).digest('hex');
+export async function stageSshWorkerRuntimeV1(input={}){
+  const {host,port=22,user,privateKeyPath,knownHostsPath,runtimePath,runtimeSha256,remoteDirectory}=input;
+  if(!isIP(host)||!Number.isSafeInteger(port)||port<1||port>65535||!/^[a-z_][a-z0-9_-]*$/.test(user??'')||!/^\/[a-zA-Z0-9_./-]+$/.test(remoteDirectory??'')||!/^[0-9a-f]{64}$/.test(runtimeSha256??''))throw Error('SSH_RUNTIME_STAGE_BINDING_REQUIRED');
+  for(const path of [privateKeyPath,knownHostsPath]){
+    if(typeof path!=='string'||!path.startsWith('/')||/[\r\n]/.test(path))throw Error('SSH_CREDENTIAL_FILE_REQUIRED');
+    const s=await lstat(path);if(!s.isFile()||(s.mode&0o077)!==0)throw Error('SSH_CREDENTIAL_FILE_UNSAFE');
+  }
+  const runtimeStat=await lstat(runtimePath);
+  if(!runtimeStat.isFile()||runtimeStat.size>268435456)throw Error('SSH_RUNTIME_STAGE_SIZE_DENIED');
+  const binary=await readFile(runtimePath);if(hash(binary)!==runtimeSha256)throw Error('SSH_RUNTIME_STAGE_DIGEST_MISMATCH');
+  const nodePath=`${remoteDirectory}/worker-node`;
+  const command=`umask 077; cat > ${nodePath}.upload && test "$(sha256sum ${nodePath}.upload | cut -d ' ' -f 1)" = ${runtimeSha256} && chmod 700 ${nodePath}.upload && mv ${nodePath}.upload ${nodePath} && sha256sum ${nodePath}`;
+  const args=['-T','-F','/dev/null','-p',String(port),'-i',privateKeyPath,'-o',`UserKnownHostsFile=${knownHostsPath}`,'-o','GlobalKnownHostsFile=/dev/null','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','PasswordAuthentication=no','-o','KbdInteractiveAuthentication=no','-o','ConnectTimeout=5','-o','ClearAllForwardings=yes','-o','LogLevel=ERROR',`${user}@${host}`,command];
+  await new Promise((resolve,reject)=>{
+    const child=spawn('/usr/bin/ssh',args,{shell:false,env:{PATH:'/usr/bin:/bin'},stdio:['pipe','pipe','pipe']});let output='';
+    const timer=setTimeout(()=>child.kill('SIGKILL'),60000);
+    child.stdout.on('data',b=>{if(output.length<1024)output+=b.toString('utf8').slice(0,1024-output.length);});child.stderr.on('data',()=>{});child.stdin.on('error',()=>{});
+    child.on('error',()=>{clearTimeout(timer);reject(Error('SSH_RUNTIME_STAGE_FAILED'));});
+    child.on('close',code=>{clearTimeout(timer);if(code!==0||output.trim().split(/\s+/)[0]!==runtimeSha256)reject(Error('SSH_RUNTIME_STAGE_FAILED'));else resolve();});
+    child.stdin.end(binary);
+  });
+  return {schemaId:'SSH_WORKER_RUNTIME_STAGE_V1',nodePath,runtimeSha256,transfer:'PASS',providerMutations:0,runtimeAccepted:false};
+}
 const remote=`import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 const p=JSON.parse(readFileSync(0,'utf8'));

@@ -4,7 +4,7 @@ import {mkdtemp,readFile,writeFile,rm,mkdir} from 'node:fs/promises';
 import {userInfo} from 'node:os';
 import {createHash} from 'node:crypto';
 import {createServer,connect} from 'node:net';
-import {executeSshDirectWorkerV1} from '../transports/direct-worker/ssh-execution-v1.mjs';
+import {executeSshDirectWorkerV1,stageSshWorkerRuntimeV1} from '../transports/direct-worker/ssh-execution-v1.mjs';
 
 const exec=promisify(execFile),hash=x=>createHash('sha256').update(x).digest('hex');
 if(process.getuid?.()!==0)throw Error('REHEARSAL_REQUIRES_ISOLATED_SSHD_ROOT');
@@ -47,8 +47,10 @@ try{
   }
   if(!ready)throw Error('REHEARSAL_SSHD_NOT_READY');
   const workerSource=await readFile(new URL('../transports/direct-worker/index.mjs',import.meta.url),'utf8');
-  const job={executionId:'r6-localhost-rehearsal',attemptId:'attempt1',fenceToken:1,workerJobSha256:hash('rehearsal'),executionPlanHash:planSha256,sourceIdentity:{sourceSha},entrypointSpec:{command:process.execPath,args:['-e','process.stdout.write("atelier-guest-execution")']},artifactPolicy:{},cleanupPolicy:{}};
-  const input={job,host:'127.0.0.1',port,user,privateKeyPath:`${root}/client`,knownHostsPath:`${root}/known_hosts`,nodePath:process.execPath,cwd:'/tmp',workerSource,workerSourceSha256:hash(workerSource),sourceSha,planSha256,nodeVersion:process.version,timeoutMs:15000};
+  const target={host:'127.0.0.1',port,user,privateKeyPath:`${root}/client`,knownHostsPath:`${root}/known_hosts`};
+  const staged=await stageSshWorkerRuntimeV1({...target,runtimePath:process.execPath,runtimeSha256:hash(await readFile(process.execPath)),remoteDirectory:root});
+  const job={executionId:'r6-localhost-rehearsal',attemptId:'attempt1',fenceToken:1,workerJobSha256:hash('rehearsal'),executionPlanHash:planSha256,sourceIdentity:{sourceSha},entrypointSpec:{command:staged.nodePath,args:['-e','process.stdout.write("atelier-guest-execution")']},artifactPolicy:{},cleanupPolicy:{}};
+  const input={job,...target,nodePath:staged.nodePath,cwd:'/tmp',workerSource,workerSourceSha256:hash(workerSource),sourceSha,planSha256,nodeVersion:process.version,timeoutMs:15000};
   const result=await executeSshDirectWorkerV1(input);
   if(result.status!=='PASS'||result.result.stdout!=='atelier-guest-execution')throw Error('REHEARSAL_WORKER_EXECUTION_FAILED');
   await exec('/usr/bin/ssh-keygen',['-q','-t','ed25519','-N','','-f',`${root}/wrong-host`]);
@@ -56,7 +58,7 @@ try{
   await writeFile(`${root}/known_hosts`,`[127.0.0.1]:${port} ${wrong}\n`,{mode:0o600});
   let pinRejected=false;try{await executeSshDirectWorkerV1(input);}catch(e){pinRejected=e.message==='SSH_HOST_KEY_REJECTED';}
   if(!pinRejected)throw Error('REHEARSAL_HOST_PIN_REJECTION_FAILED');
-  receipt={schemaId:'EP52_R6_GUEST_REHEARSAL_V1',classification:'LOCALHOST_TRANSPORT_REHEARSAL_ONLY',sourceSha,planSha256,nodeVersion:process.version,workerSourceSha256:hash(workerSource),execution:'PASS',hostKeyMismatchRejected:true,providerMutations:0,paidResourcesCreated:0,remoteProviderAttested:false,finalR6Acceptance:false};
+  receipt={schemaId:'EP52_R6_GUEST_REHEARSAL_V1',classification:'LOCALHOST_TRANSPORT_REHEARSAL_ONLY',sourceSha,planSha256,nodeVersion:process.version,workerSourceSha256:hash(workerSource),runtimeBinarySha256:staged.runtimeSha256,runtimeTransfer:staged.transfer,execution:'PASS',hostKeyMismatchRejected:true,providerMutations:0,paidResourcesCreated:0,remoteProviderAttested:false,finalR6Acceptance:false};
 }catch(e){
   const code=/^(SSH_|REHEARSAL_)[A-Z_]+$/.test(e.message)?e.message:'REHEARSAL_EXECUTION_FAILED';
   receipt={schemaId:'EP52_R6_GUEST_REHEARSAL_V1',classification:'LOCALHOST_TRANSPORT_REHEARSAL_ONLY',sourceSha:process.env.EP52_SOURCE_SHA??null,nodeVersion:process.version,execution:'FAIL',failureCode:code,serverSecurityCapability:/chroot.*Operation not permitted/.test(daemonError)?'CHROOT_UNAVAILABLE':'NOT_CLASSIFIED',providerMutations:0,paidResourcesCreated:0,remoteProviderAttested:false,finalR6Acceptance:false};
