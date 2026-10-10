@@ -236,3 +236,34 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+
+  r6_guest_transport_rehearsal:
+    needs: verify
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Rehearse machine SSH worker with isolated localhost keys
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          r6_node_binary="$(command -v node)"
+          sudo --preserve-env=EP52_SOURCE_SHA,GITHUB_REPOSITORY,GITHUB_ACTIONS "$r6_node_binary" scripts/run-r6-guest-rehearsal.mjs
+      - name: Preserve rehearsal receipt without credentials
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-guest-rehearsal-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/r6-guest-rehearsal/receipt.json
+          if-no-files-found: error
+          retention-days: 7
+
