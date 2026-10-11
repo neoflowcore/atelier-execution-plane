@@ -6,7 +6,7 @@ import {runTeardownServiceV1} from '../watchdog/teardown-watchdog/service-v1.mjs
 import {evaluateGithubControllerIsolationV1} from '../watchdog/teardown-watchdog/github-isolation-v1.mjs';
 
 const root='artifacts/ep52/r6-independent-controller';
-async function save(name,value){await mkdir(root,{recursive:true});await writeFile(`${root}/${name}.json`,JSON.stringify(value,null,2)+'\n',{mode:0o600});}
+async function save(name,value){await mkdir(root,{recursive:true});const {rename}=await import('node:fs/promises');await writeFile(`${root}/${name}.tmp`,JSON.stringify(value,null,2)+'\n',{mode:0o600});await rename(`${root}/${name}.tmp`,`${root}/${name}.json`);}
 try{
   const repository=process.env.GITHUB_REPOSITORY,sourceSha=process.env.EP52_SOURCE_SHA,runId=process.env.GITHUB_RUN_ID;
   if(repository!=='neoflowcore/atelier-execution-plane'||!/^[0-9a-f]{40}$/.test(sourceSha??'')||!/^\d+$/.test(runId??'')||process.version!=='v22.13.0'||execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==sourceSha)throw Error('CONTROLLER_CONTEXT_REQUIRED');
@@ -37,8 +37,8 @@ try{
   // collision somehow appears. No DELETE or POST can be sent by this job.
   const provider=Object.freeze({...api,deleteResource:async()=>{throw Error('CONTROLLER_REFERENCE_DELETE_DENIED');}});
   const issuedAtMs=Date.now();
-  const lease={schemaId:'EP52_TEARDOWN_LEASE_V1',executionId:`r6-reference-${runId}`,leaseId:`controller-${runId}`,sourceSha,planSha256:binding.planSha256,accountUuid:'bd0ac817-54dd-47e5-8a66-73d30e19fc3a',issuedAtMs,expiresAtMs:issuedAtMs+15000};
-  const result=await runTeardownServiceV1({lease,provider,cleanupLeadMs:1000,onArmed:r=>save('armed',r)});
+  const lease={schemaId:'EP52_TEARDOWN_LEASE_V1',executionId:`r6-reference-${runId}`,leaseId:`controller-${runId}`,sourceSha,planSha256:binding.planSha256,accountUuid:'bd0ac817-54dd-47e5-8a66-73d30e19fc3a',issuedAtMs,expiresAtMs:issuedAtMs+120000};
+  const result=await runTeardownServiceV1({lease,provider,cleanupLeadMs:1000,onArmed:async r=>{await save('armed',r);await save('envelope',{schemaId:'EP52_CONTROLLER_ARM_ENVELOPE_V1',referenceOnly:true,providerMutationsAllowed:false,lease,armed:r,isolation});}});
   if(result.status!=='ABSENT_AT_EXPIRY')throw Error('CONTROLLER_REFERENCE_INVENTORY_NOT_EMPTY');
   const receipt={schemaId:'EP52_R6_INDEPENDENT_CONTROLLER_REFERENCE_V1',sourceSha,planSha256:binding.planSha256,nodeVersion:process.version,isolation,teardown:result,classification:'SEPARATE_GITHUB_RUNNER_READ_ONLY_REFERENCE',providerMutations:0,paidCreates:0,deleteCapabilityAttested:false,independentProviderCleanupAttested:false,finalR6Acceptance:false};
   await save('receipt',receipt);console.log(JSON.stringify(receipt));
