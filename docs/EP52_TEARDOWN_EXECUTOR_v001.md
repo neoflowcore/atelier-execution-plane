@@ -19,3 +19,11 @@ The current CLI is an explicit execution entrypoint; it is not automatically sta
 ## Validation limits
 
 Semantic tests cover expiry ordering, failed arming, account mismatch, ownership collision/rebinding, pre-existing resources, TTL limits, unknown children, preserved children, DELETE-response loss, bounded provider failure, absence-without-delete, forbidden API paths, complete pagination, foreign-resource preservation and a separate worker process killed with SIGKILL. These are local/provider-simulated proofs. The process-kill case proves separate-process survival on the same host; it does not prove survival of host loss or a DigitalOcean live teardown.
+
+## Existing GitHub infrastructure reference
+
+When no existing management server is available, `.github/workflows/r6-watchdog.yml` runs a separate source-bound controller reference on a GitHub-hosted runner. It has a distinct workflow and concurrency group from `verify.yml` and only read permissions. The controller uses GitHub's authoritative run/job API to require different workflow IDs, run IDs and runner IDs for the same repository, branch and source. It observes the peer verification job completing successfully while its own controller job remains running.
+
+The reference then uses the existing repository Secret to authenticate DigitalOcean account/inventory reads and persists a short-lived lease, armed receipt and result. An additional wrapper hard-denies DELETE, so this job cannot mutate DigitalOcean even if a resource collision appears. Artifacts contain no credential values.
+
+This closes discovery and deployment of a separate-runner read-only reference on existing GitHub infrastructure. It does not prove paid-compute deletion, platform-outage survival, durable restart after controller-host loss, or a live creation/arming handshake. It never sets paid-create authority or final R6 acceptance. A later live controller/worker pair must provide those required attestations before provisioning.

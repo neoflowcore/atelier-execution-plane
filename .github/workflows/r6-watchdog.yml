@@ -1,0 +1,37 @@
+name: r6-independent-controller-reference
+on:
+  pull_request:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ep52-r6-independent-controller-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  r6_independent_watchdog:
+    if: ${{ github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Prove separate workflow and runner using read-only provider reference
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+        run: node scripts/run-r6-independent-controller-reference.mjs
+      - name: Preserve sanitized controller evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-controller-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-independent-controller
+          if-no-files-found: error
+          retention-days: 7
