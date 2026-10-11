@@ -37,6 +37,9 @@ jobs:
       - name: Wait for controller monitoring result
         env:
           EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+          EP52_REFERENCE_KILL_CONTROLLER: 'true'
         run: node scripts/wait-r6-controller-reference.mjs
       - name: Preserve sanitized controller evidence
         if: ${{ always() }}
@@ -49,5 +52,7 @@ jobs:
             artifacts/ep52/r6-independent-controller/envelope.json
             artifacts/ep52/r6-independent-controller/receipt.json
             artifacts/ep52/r6-independent-controller/failure.json
+            artifacts/ep52/r6-independent-controller/lease.json
+            artifacts/ep52/r6-independent-controller/recovery.json
           if-no-files-found: error
           retention-days: 7

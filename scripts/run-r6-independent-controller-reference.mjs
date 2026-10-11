@@ -4,6 +4,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {createDigitalOceanTeardownApiV1} from '../providers/digitalocean/teardown-api-v1.mjs';
 import {runTeardownServiceV1} from '../watchdog/teardown-watchdog/service-v1.mjs';
 import {evaluateGithubControllerIsolationV1} from '../watchdog/teardown-watchdog/github-isolation-v1.mjs';
+import {selectFixedTeardownLeaseV1} from '../watchdog/teardown-watchdog/recovery-v1.mjs';
 
 const root='artifacts/ep52/r6-independent-controller';
 async function save(name,value){await mkdir(root,{recursive:true});const {rename}=await import('node:fs/promises');await writeFile(`${root}/${name}.tmp`,JSON.stringify(value,null,2)+'\n',{mode:0o600});await rename(`${root}/${name}.tmp`,`${root}/${name}.json`);}
@@ -36,8 +37,10 @@ try{
   // This reference has an additional hard read-only boundary, even if a tag
   // collision somehow appears. No DELETE or POST can be sent by this job.
   const provider=Object.freeze({...api,deleteResource:async()=>{throw Error('CONTROLLER_REFERENCE_DELETE_DENIED');}});
-  const issuedAtMs=Date.now();
-  const lease={schemaId:'EP52_TEARDOWN_LEASE_V1',executionId:`r6-reference-${runId}`,leaseId:`controller-${runId}`,sourceSha,planSha256:binding.planSha256,accountUuid:'bd0ac817-54dd-47e5-8a66-73d30e19fc3a',issuedAtMs,expiresAtMs:issuedAtMs+120000};
+  let existingLease;
+  try{existingLease=JSON.parse(await readFile(`${root}/lease.json`,'utf8'));}catch(e){if(e.code!=='ENOENT')throw Error('CONTROLLER_LEASE_CHECKPOINT_INVALID');}
+  const lease=selectFixedTeardownLeaseV1({existingLease,executionId:`r6-reference-${runId}`,leaseId:`controller-${runId}`,sourceSha,planSha256:binding.planSha256,accountUuid:'bd0ac817-54dd-47e5-8a66-73d30e19fc3a',nowMs:Date.now()});
+  if(!existingLease)await save('lease',lease);
   const result=await runTeardownServiceV1({lease,provider,cleanupLeadMs:1000,onArmed:async r=>{await save('armed',r);await save('envelope',{schemaId:'EP52_CONTROLLER_ARM_ENVELOPE_V1',referenceOnly:true,providerMutationsAllowed:false,lease,armed:r,isolation});}});
   if(result.status!=='ABSENT_AT_EXPIRY')throw Error('CONTROLLER_REFERENCE_INVENTORY_NOT_EMPTY');
   const receipt={schemaId:'EP52_R6_INDEPENDENT_CONTROLLER_REFERENCE_V1',sourceSha,planSha256:binding.planSha256,nodeVersion:process.version,isolation,teardown:result,classification:'SEPARATE_GITHUB_RUNNER_READ_ONLY_REFERENCE',providerMutations:0,paidCreates:0,deleteCapabilityAttested:false,independentProviderCleanupAttested:false,finalR6Acceptance:false};
