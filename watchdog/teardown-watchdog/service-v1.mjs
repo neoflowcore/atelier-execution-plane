@@ -10,9 +10,9 @@ export function validateTeardownLeaseV1(lease){
 
 // Run on a separately supervised controller. A running function is not proof
 // that its host survives executor/runner/session loss. It can never provision.
-export async function runTeardownServiceV1({lease,provider,onArmed,now=Date.now,sleep=delay,pollMs=1000,maxReconcileAttempts=3}={}){
+export async function runTeardownServiceV1({lease,provider,onArmed,now=Date.now,sleep=delay,pollMs=1000,maxReconcileAttempts=3,cleanupLeadMs=180000}={}){
   lease=validateTeardownLeaseV1(lease);
-  if(!provider||!['readAccount','listOwned','readResource','readChildren','deleteResource'].every(k=>typeof provider[k]==='function')||typeof onArmed!=='function'||!Number.isSafeInteger(pollMs)||pollMs<1||pollMs>10000||!Number.isSafeInteger(maxReconcileAttempts)||maxReconcileAttempts<1||maxReconcileAttempts>5)throw Error('TEARDOWN_SERVICE_IO_REQUIRED');
+  if(!provider||!['readAccount','listOwned','readResource','readChildren','deleteResource'].every(k=>typeof provider[k]==='function')||typeof onArmed!=='function'||!Number.isSafeInteger(pollMs)||pollMs<1||pollMs>10000||!Number.isSafeInteger(maxReconcileAttempts)||maxReconcileAttempts<1||maxReconcileAttempts>5||!Number.isSafeInteger(cleanupLeadMs)||cleanupLeadMs<1000||cleanupLeadMs>180000)throw Error('TEARDOWN_SERVICE_IO_REQUIRED');
   if(now()<lease.issuedAtMs)throw Error('TEARDOWN_CLOCK_BEFORE_LEASE');
   const account=await provider.readAccount();
   if(account.uuid!==lease.accountUuid||account.status!=='active')throw Error('TEARDOWN_ACCOUNT_MISMATCH');
@@ -27,10 +27,11 @@ export async function runTeardownServiceV1({lease,provider,onArmed,now=Date.now,
     return xs;
   };
   await inventory();
-  const armed={schemaId:'EP52_TEARDOWN_ARMED_V1',leaseDigest:hash(lease),sourceSha:lease.sourceSha,planSha256:lease.planSha256,expiresAtMs:lease.expiresAtMs,armedAtMs:now(),independentFailureDomainAttested:false,paidCreateAuthorized:false};
+  const cleanupAtMs=Math.max(lease.issuedAtMs,lease.expiresAtMs-cleanupLeadMs);
+  const armed={schemaId:'EP52_TEARDOWN_ARMED_V1',leaseDigest:hash(lease),sourceSha:lease.sourceSha,planSha256:lease.planSha256,expiresAtMs:lease.expiresAtMs,cleanupAtMs,armedAtMs:now(),independentFailureDomainAttested:false,paidCreateAuthorized:false};
   // Admission must not observe armed state before its durable write succeeds.
   await onArmed(Object.freeze(armed));
-  while(now()<lease.expiresAtMs)await sleep(Math.min(pollMs,lease.expiresAtMs-now()));
+  while(now()<cleanupAtMs)await sleep(Math.min(pollMs,cleanupAtMs-now()));
   let xs=await inventory();
   if(xs.length===0)return Object.freeze({...armed,status:'ABSENT_AT_EXPIRY',deleteObserved:false,ownedComputeAbsent:true,childInventoryKnown:false,billableResidueZeroAttested:false,finalR6Acceptance:false});
   const resourceId=String(xs[0].id);

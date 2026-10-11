@@ -13,12 +13,13 @@ function fixture(){
   const provider={readAccount:async()=>({uuid:lease.accountUuid,status:'active'}),listOwned:async()=>resource?[resource]:[],readResource:async()=>resource,readChildren:async()=>empty,deleteResource:async id=>{calls.push({id,clock});resource=null;}};
   return {lease,provider,onArmed:async()=>{},now:()=>clock,sleep:async n=>{clock+=n;},pollMs:100,calls,setResource:r=>{resource=r;}};
 }
-test('armed persistence precedes waiting; expiry deletes owned compute and reads absence',async()=>{
-  const f=fixture();let armed=false;
+test('armed persistence precedes waiting; cleanup starts before expiry and reads absence',async()=>{
+  const f=fixture();f.lease={...lease,expiresAtMs:400000};let armed=false;
   f.onArmed=async r=>{assert.equal(f.calls.length,0);assert.equal(r.independentFailureDomainAttested,false);armed=true;};
   const sleep=f.sleep;f.sleep=async n=>{assert.equal(armed,true);await sleep(n);};
   const r=await runTeardownServiceV1(f);
-  assert.deepEqual(f.calls,[{id:'42',clock:2000}]);
+  assert.deepEqual(f.calls,[{id:'42',clock:220000}]);
+  assert.equal(r.cleanupAtMs,220000);
   assert.equal(r.status,'OWNED_CLEANUP_OBSERVED');assert.equal(r.billableResidueZeroAttested,true);assert.equal(r.finalR6Acceptance,false);
 });
 test('failed durable arm cannot execute DELETE',async()=>{
