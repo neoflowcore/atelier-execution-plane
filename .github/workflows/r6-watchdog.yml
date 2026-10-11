@@ -56,3 +56,37 @@ jobs:
             artifacts/ep52/r6-independent-controller/recovery.json
           if-no-files-found: error
           retention-days: 7
+
+  r6_replacement_controller:
+    needs: r6_independent_watchdog
+    if: ${{ github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Restore controller checkpoint from immutable artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ep52-r6-controller-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-replacement-input
+      - name: Reconcile the expired lease on a different runner
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+        run: node scripts/run-r6-replacement-controller-reference.mjs
+      - name: Preserve replacement reconciliation
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-replacement-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-replacement-controller
+          if-no-files-found: error
+          retention-days: 7
