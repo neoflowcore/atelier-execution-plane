@@ -70,3 +70,45 @@ test('pagination rejects foreign hosts and changed ownership filters',async()=>{
 
 test("official API driver performs discovery create readback cleanup and zero residue",async()=>{const f=fakeApi();const d=createDigitalOceanOfficialApiSurfaceDriverV1({request:f.request,getAuthMetadata:f.getAuthMetadata});const plan={executionId:"ep52-do-test"};const context={leaseId:"lease1",requirements:{minCpu:2,minMemoryMiB:4096,minDiskGiB:20},regionPreference:"sgp1",imageSlug:"ubuntu-24-04-x64",ttlSeconds:1800,costCapMilliUsd:100,bootstrapBundleSha256:"a".repeat(64)};const discovery=await d.discover({plan,context});assert.equal(discovery.size.slug,"s-2vcpu-4gb");assert.equal(discovery.size.projectedCostMilliUsd,18);const current=await d.readCurrent({plan,context});const diff=await d.diffDesired({plan,context,current});const mutation=await d.mutateMinimalDelta({diff});assert.equal(mutation.newPaidResourceCreated,true);const readback=await d.authoritativeReadback({plan,context});assert.equal(readback.status,"active");const cleanup=await d.cleanup({plan,context});assert.equal(cleanup.childBillableResourceCount,0);const absent=await d.deleteReadback({plan,context});assert.equal(absent.resourceAbsent,true);const residue=await d.residueScan({plan,context});assert.deepEqual([residue.ACTIVE_PAID_COMPUTE,residue.ORPHANED_BILLABLE_RESOURCE,residue.BILLABLE_RESIDUE],[0,0,0])});
 
+
+test('lost create response reconciles the successful request without another POST',async()=>{
+  for(const failure of ['NETWORK','SERVER','MALFORMED']){
+    const f=fakeApi();
+    const request=async req=>{
+      const response=await f.request(req);
+      if(req.method==='POST'){
+        if(failure==='NETWORK')throw Error('private transport failure');
+        if(failure==='SERVER')return {status:503,body:{}};
+        return {status:202,body:{}};
+      }
+      return response;
+    };
+    const d=createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMetadata:f.getAuthMetadata});
+    await assert.rejects(d.mutateMinimalDelta({diff:{action:'CREATE',spec:{executionId:binding.plan.executionId,region:'sgp1',sizeSlug:'small',imageId:'ubuntu',userData:'fixture',tags:['atelier-execution:ep52-do-test','atelier-lease:lease1']},projectedCostMilliUsd:10}}),e=>e.code==='OUTCOME_UNKNOWN');
+    const reconciled=await d.reconcileUnknown(binding);
+    assert.equal(reconciled.status,'RECONCILED');assert.equal(reconciled.resourceId,'101');
+    await d.cleanup(binding);assert.equal((await d.deleteReadback(binding)).resourceAbsent,true);
+    assert.equal(f.requests.filter(r=>r.method==='POST').length,1);
+  }
+});
+test('ownership rebinding during child inventory blocks DELETE',async()=>{
+  const f=fakeApi();let rebound=false;
+  const d=createDigitalOceanOfficialApiSurfaceDriverV1({getAuthMetadata:f.getAuthMetadata,request:async req=>{
+    if(req.path.endsWith('/destroy_with_associated_resources'))rebound=true;
+    if(rebound&&req.path==='/v2/droplets')return {status:200,body:{droplets:[{id:101,status:'active',tags:['foreign']}]}};
+    return f.request(req);
+  }});
+  await d.mutateMinimalDelta({diff:{action:'CREATE',spec:{region:'sgp1',sizeSlug:'small',imageId:'ubuntu',tags:['atelier-execution:ep52-do-test','atelier-lease:lease1']},projectedCostMilliUsd:10}});
+  await assert.rejects(d.cleanup(binding),/CLEANUP_OWNERSHIP_NOT_VERIFIED/);
+  assert.equal(f.requests.filter(r=>r.method==='DELETE').length,0);
+});
+test('lost DELETE response uses GET absence and does not issue a second DELETE',async()=>{
+  const f=fakeApi();
+  const d=createDigitalOceanOfficialApiSurfaceDriverV1({getAuthMetadata:f.getAuthMetadata,request:async req=>{
+    const response=await f.request(req);if(req.method==='DELETE')throw Error('private delete transport failure');return response;
+  }});
+  await d.mutateMinimalDelta({diff:{action:'CREATE',spec:{region:'sgp1',sizeSlug:'small',imageId:'ubuntu',tags:['atelier-execution:ep52-do-test','atelier-lease:lease1']},projectedCostMilliUsd:10}});
+  await d.cleanup(binding);assert.equal((await d.deleteReadback(binding)).resourceAbsent,true);
+  assert.equal(f.requests.filter(r=>r.method==='DELETE').length,1);
+  assert.equal((await d.residueScan(binding)).BILLABLE_RESIDUE,0);
+});

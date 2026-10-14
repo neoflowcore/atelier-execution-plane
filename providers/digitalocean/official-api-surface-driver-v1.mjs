@@ -10,9 +10,11 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
   if(typeof request!=="function"||typeof getAuthMetadata!=="function")throw new Error("DIGITALOCEAN_SURFACE_IO_REQUIRED");
   let resourceId=null,childCount=null,discovery=null;
   const call=async(method,path,opts={})=>{
-    const r=await request({method,path,query:opts.query??null,body:opts.body??null,tokenMaterialAllowed:false});
+    let r;
+    try{r=await request({method,path,query:opts.query??null,body:opts.body??null,tokenMaterialAllowed:false});}
+    catch(error){if(method==="POST"&&path==="/v2/droplets"){const unknown=new Error("DIGITALOCEAN_CREATE_OUTCOME_UNKNOWN");unknown.code="OUTCOME_UNKNOWN";throw unknown;}throw error;}
     const allowed=opts.allowed??[200];
-    if(!r||!allowed.includes(r.status)){const e=new Error(`DIGITALOCEAN_HTTP_STATUS_UNEXPECTED:${r?.status??"NONE"}`);if(r?.outcomeUnknown)e.code="OUTCOME_UNKNOWN";throw e}
+    if(!r||!allowed.includes(r.status)){const e=new Error(`DIGITALOCEAN_HTTP_STATUS_UNEXPECTED:${r?.status??"NONE"}`);if(r?.outcomeUnknown||(method==="POST"&&path==="/v2/droplets"&&(!Number.isInteger(r?.status)||r.status>=500||r.status<400)))e.code="OUTCOME_UNKNOWN";throw e}
     return r;
   };
   const owned=async(executionId,leaseId)=>{
@@ -31,6 +33,19 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
       query={tag_name:query.tag_name,per_page:200,page:Number(u.searchParams.get("page"))};
     }
     throw new Error("DIGITALOCEAN_PAGINATION_LIMIT");
+  };
+  const deleteOwned=async(plan,context)=>{
+    // Recheck after child inventory: a resource may have been rebound while
+    // that API request was in flight. Never delete an ambiguous inventory.
+    const current=await owned(plan?.executionId,context?.leaseId);
+    if(current.length!==1||current[0].resourceId!==resourceId)throw new Error("DIGITALOCEAN_CLEANUP_OWNERSHIP_NOT_VERIFIED");
+    try{await call("DELETE",`/v2/droplets/${resourceId}`,{allowed:[204]});}
+    catch{
+      // A lost response can hide a successful DELETE. Reconcile, never repeat
+      // the destructive request blindly, and keep child-scan uncertainty.
+      const readback=await call("GET",`/v2/droplets/${resourceId}`,{allowed:[200,404]});
+      if(readback.status!==404)throw new Error("DIGITALOCEAN_HTTP_STATUS_UNEXPECTED:DELETE_UNRESOLVED");
+    }
   };
   return Object.freeze({
     provider:"DIGITALOCEAN",surfaceClass,rawSecretMaterialExposed:false,browserNormalPath:false,manualSshNormalPath:false,
@@ -69,7 +84,7 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
         if(createHash("sha256").update(userData).digest("hex")!==diff.spec.guestBootstrap.userDataSha256)throw new Error("DIGITALOCEAN_GUEST_BOOTSTRAP_DIGEST_MISMATCH");
       }
       const r=await call("POST","/v2/droplets",{allowed:[202],body:{name:`atelier-${diff.spec.executionId}`.slice(0,63),region:diff.spec.region,size:diff.spec.sizeSlug,image:diff.spec.imageId,user_data:userData,tags:diff.spec.tags,backups:false,monitoring:false,ipv6:false}});
-      if(r.body?.droplet?.id==null)throw new Error("DIGITALOCEAN_CREATE_ID_REQUIRED");
+      if(r.body?.droplet?.id==null){const unknown=new Error("DIGITALOCEAN_CREATE_ID_REQUIRED");unknown.code="OUTCOME_UNKNOWN";throw unknown;}
       resourceId=String(r.body.droplet.id);return {noOp:false,resourceCountDelta:1,newPaidResourceCreated:true,resourceId,projectedCostMilliUsd:diff.projectedCostMilliUsd};
     },
     async reconcileUnknown({plan,context}){const xs=await owned(plan.executionId,context.leaseId);if(xs.length>1)return {status:"BLOCKED_AMBIGUOUS",resourceCountDelta:xs.length,newPaidResourceCreated:true};if(xs.length===1){resourceId=xs[0].resourceId;return {status:"RECONCILED",resourceCountDelta:1,newPaidResourceCreated:true,resourceId}}return {status:"RECONCILED",resourceCountDelta:0,newPaidResourceCreated:false}},
@@ -88,10 +103,10 @@ export function createDigitalOceanOfficialApiSurfaceDriverV1({request,getAuthMet
       }catch{
         // Release owned paid compute even when the child scan fails. Preserve
         // uncertainty and reject zero-residue acceptance after deletion.
-        await call("DELETE",`/v2/droplets/${resourceId}`,{allowed:[204]});
+        await deleteOwned(plan,context);
         throw new Error("DIGITALOCEAN_CHILD_INVENTORY_UNKNOWN_AFTER_DELETE");
       }
-      await call("DELETE",`/v2/droplets/${resourceId}`,{allowed:[204]});
+      await deleteOwned(plan,context);
       return {ephemeralCredentialResidue:false,childBillableResourceCount:childCount};
       }finally{context?.guestBootstrap?.revoke?.();}
     },
