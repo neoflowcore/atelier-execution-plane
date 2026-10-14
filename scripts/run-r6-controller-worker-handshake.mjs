@@ -1,7 +1,7 @@
 import {readFile,mkdir,writeFile,appendFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
-import {evaluateControllerWorkerHandshakeV1} from '../watchdog/teardown-watchdog/handshake-v1.mjs';
+import {observeControllerWorkerHandshakeV1} from '../watchdog/teardown-watchdog/handshake-v1.mjs';
 const root='artifacts/ep52/r6-worker-handshake';
 try{
   const repository=process.env.GITHUB_REPOSITORY,sourceSha=process.env.EP52_SOURCE_SHA,workerRunId=process.env.GITHUB_RUN_ID;
@@ -35,10 +35,12 @@ try{
   const controllerRunId=process.env.CONTROLLER_RUN_ID;
   const envelope=JSON.parse(await readFile('artifacts/ep52/r6-handshake-input/envelope.json','utf8'));
   const binding=JSON.parse(await readFile('docs/EP52_V006_PLAN_BINDING_v001.json','utf8'));
+  const result=await observeControllerWorkerHandshakeV1({wait:delay,observe:async()=>{
   const [controllerRun,controllerJobs,workerRun,workerJobs]=await Promise.all([get(`/actions/runs/${controllerRunId}`),get(`/actions/runs/${controllerRunId}/jobs?per_page=100`),get(`/actions/runs/${workerRunId}`),get(`/actions/runs/${workerRunId}/jobs?per_page=100`)]);
   if(controllerRun.path?.split('@')[0]!=='.github/workflows/r6-watchdog.yml'||workerRun.path?.split('@')[0]!=='.github/workflows/verify.yml'||[controllerRun,workerRun].some(r=>r.event!=='pull_request'||r.head_branch!=='ep52-h1-recovery'))throw Error('HANDSHAKE_RUN_ORIGIN_MISMATCH');
   const c=controllerJobs.jobs?.find(j=>j.name==='r6_independent_watchdog'),w=workerJobs.jobs?.find(j=>j.name==='r6_controller_worker_handshake');
-  const result=evaluateControllerWorkerHandshakeV1({envelope,sourceSha,planSha256:binding.planSha256,nowMs:Date.now(),controllerState:{sourceSha:controllerRun.head_sha,repository:controllerRun.repository?.full_name,runId:controllerRun.id,status:controllerRun.status,jobStatus:c?.status,runnerId:c?.runner_id,monitorStepRunning:c?.steps?.some(s=>s.name==='Wait for controller monitoring result'&&s.status==='in_progress')},workerState:{sourceSha:workerRun.head_sha,repository:workerRun.repository?.full_name,runId:workerRun.id,status:workerRun.status,runnerId:w?.runner_id}});
+  return {envelope,sourceSha,planSha256:binding.planSha256,nowMs:Date.now(),controllerState:{sourceSha:controllerRun.head_sha,repository:controllerRun.repository?.full_name,runId:controllerRun.id,status:controllerRun.status,jobStatus:c?.status,runnerId:c?.runner_id,monitorStepRunning:c?.steps?.some(s=>s.name==='Wait for controller monitoring result'&&s.status==='in_progress')},workerState:{sourceSha:workerRun.head_sha,repository:workerRun.repository?.full_name,runId:workerRun.id,status:workerRun.status,jobStatus:w?.status,runnerId:w?.runner_id}};
+  }});
   await mkdir(root,{recursive:true});await writeFile(`${root}/receipt.json`,JSON.stringify(result,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify(result));if(result.status!=='LIVE_REFERENCE_HANDSHAKE_PASS')process.exitCode=1;
 }catch{

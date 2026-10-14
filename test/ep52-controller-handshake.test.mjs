@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {evaluateControllerWorkerHandshakeV1} from '../watchdog/teardown-watchdog/handshake-v1.mjs';
+import {evaluateControllerWorkerHandshakeV1,observeControllerWorkerHandshakeV1} from '../watchdog/teardown-watchdog/handshake-v1.mjs';
 function fixture(){
   const sourceSha='a'.repeat(40),planSha256='b'.repeat(64),lease={schemaId:'EP52_TEARDOWN_LEASE_V1',executionId:'run',leaseId:'lease',sourceSha,planSha256,accountUuid:'bd0ac817-54dd-47e5-8a66-73d30e19fc3a',issuedAtMs:100000,expiresAtMs:220000};
   const armed={schemaId:'EP52_TEARDOWN_ARMED_V1',sourceSha,planSha256,leaseDigest:createHash('sha256').update(JSON.stringify(lease)).digest('hex'),expiresAtMs:220000,cleanupAtMs:219000,armedAtMs:100100,paidCreateAuthorized:false,independentFailureDomainAttested:false};
@@ -17,4 +17,21 @@ test('expired or stale arm, stopped monitor, same runner, altered lease or wrong
 });
 test('missing and malformed input fail closed rather than throw or fabricate acceptance',()=>{
   for(const envelope of [undefined,{}, {lease:{}}]){const r=evaluateControllerWorkerHandshakeV1({envelope});assert.equal(r.status,'BLOCKED');assert.equal(r.finalR6Acceptance,false);}
+});
+
+test('queued aggregate status is reobserved only while the worker job is running',async()=>{
+  let calls=0,waits=0;
+  const result=await observeControllerWorkerHandshakeV1({observe:async()=>{calls++;const x=fixture();x.workerState.jobStatus='in_progress';if(calls<3)x.workerState.status='queued';return x;},wait:async ms=>{assert.equal(ms,1000);waits++;}});
+  assert.equal(result.status,'LIVE_REFERENCE_HANDSHAKE_PASS');assert.equal(calls,3);assert.equal(waits,2);
+});
+test('metadata delay cannot override stale arms, queued jobs, source drift or completed runs',async()=>{
+  for(const mutate of [x=>{x.nowMs=195000;},x=>{x.workerState.jobStatus='queued';},x=>{x.sourceSha='c'.repeat(40);},x=>{x.workerState.status='completed';}]){
+    let calls=0;const result=await observeControllerWorkerHandshakeV1({observe:async()=>{calls++;const x=fixture();x.workerState.status='queued';x.workerState.jobStatus='in_progress';mutate(x);return x;},wait:async()=>{assert.fail('non-transient observation must not retry');}});
+    assert.equal(result.status,'BLOCKED');assert.equal(calls,1);
+  }
+});
+test('permanent aggregate metadata delay is bounded and does not extend the lease',async()=>{
+  let calls=0,waits=0;
+  const result=await observeControllerWorkerHandshakeV1({observe:async()=>{calls++;const x=fixture();x.workerState.status='queued';x.workerState.jobStatus='in_progress';return x;},wait:async()=>{waits++;}});
+  assert.equal(result.status,'BLOCKED');assert.equal(calls,6);assert.equal(waits,5);
 });

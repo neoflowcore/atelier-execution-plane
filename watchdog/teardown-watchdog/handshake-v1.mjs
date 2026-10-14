@@ -22,3 +22,15 @@ export function evaluateControllerWorkerHandshakeV1({envelope,sourceSha,planSha2
   };
   return Object.freeze({schemaId:'EP52_CONTROLLER_WORKER_HANDSHAKE_V1',status:Object.values(checks).every(Boolean)?'LIVE_REFERENCE_HANDSHAKE_PASS':'BLOCKED',checks,blockers:Object.keys(checks).filter(k=>!checks[k]),sourceSha:sourceSha??null,planSha256:planSha256??null,leaseDigest:arm?.leaseDigest??null,controllerRunId:iso?.controllerRunId??null,workerRunId:workerState?.runId??null,observedAtMs:nowMs??null,providerMutations:0,paidCreateAuthorized:false,finalR6Acceptance:false});
 }
+
+export async function observeControllerWorkerHandshakeV1({observe,wait}={}){
+  if(typeof observe!=='function'||typeof wait!=='function')throw Error('HANDSHAKE_OBSERVER_REQUIRED');
+  for(let attempt=1;attempt<=6;attempt++){
+    const input=await observe();
+    const result=evaluateControllerWorkerHandshakeV1(input);
+    const transient=result.blockers.length===1&&result.blockers[0]==='currentWorker'&&
+      input.workerState?.status==='queued'&&input.workerState?.jobStatus==='in_progress';
+    if(!transient||attempt===6)return Object.freeze({...result,observationAttempts:attempt,workerRunStatus:input.workerState?.status??null,workerJobStatus:input.workerState?.jobStatus??null});
+    await wait(1000);
+  }
+}
