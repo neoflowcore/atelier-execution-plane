@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cloudflare Runtime Power"
+  short_description: "Cloudflare 계정·자원 조회와 안전한 대상 선택"
+  default_prompt: "Use $cloudflare-runtime-power to inspect my Cloudflare resources without making changes."

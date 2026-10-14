@@ -19,6 +19,17 @@ jobs:
         with:
           node-version: '22.13.0'
       - run: npm run verify
+      - name: Package Runtime Power personal plugin
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        run: python scripts/package-runtime-power-plugin.py
+      - name: Preserve Runtime Power plugin package
+        if: ${{ github.head_ref == 'ep52-h1-recovery' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cloudflare-runtime-power-${{ github.event.pull_request.head.sha }}
+          path: artifacts/ep52/runtime-power-plugin
+          if-no-files-found: error
+          retention-days: 7
       - name: Run v006 R1 GitHub-hosted external executor reference
         if: ${{ github.head_ref == 'ep52-h1-recovery' }}
         env:
