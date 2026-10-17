@@ -1,0 +1,2 @@
+import test from "node:test";import assert from "node:assert/strict";import {readFile} from "node:fs/promises";
+test("final source closure generator keeps Horizon 2 locked and only defers live work",async()=>{const s=await readFile(new URL("../scripts/generate-final-source-closure-v2.mjs",import.meta.url),"utf8");assert.match(s,/HORIZON2_START_ALLOWED!==false/);assert.match(s,/PASS_SOURCE_EXHAUSTED_LIVE_DEFERRED/);assert.match(s,/priorP18ReceiptSupersededForCurrentSource:true/);assert.doesNotMatch(s,/class:"SOURCE"/)});

@@ -1,0 +1,5 @@
+export function compileV006HorizonBoundaryV1({historicalRuntimePiloteSealsPreserved,runtimeSourceMutationCount=0,piloteSourceMutationCount=0,horizon1CompatibilityProjectionStatus,horizon1IntegrationSealStatus}={}){
+ const h1=historicalRuntimePiloteSealsPreserved===true&&runtimeSourceMutationCount===0&&piloteSourceMutationCount===0&&horizon1CompatibilityProjectionStatus==="PASS";
+ const h2NativeOwnership=Object.freeze({runtime:["handoffAuthority","batchReplayAdmission","reconciliation","authoritativeExternalAcceptance","durableAuthorityOrchestration","credentialAttestation","resourceAdmission"],executionPlane:["executorAdapters","handoffDelivery","externalPhysicalActuation","readbackProducers","credentialRefInjection","diagnosticsArtifactTransferCleanup"]});
+ return Object.freeze({schemaId:"V006_HORIZON_BOUNDARY_V1",HORIZON1_V006_COMPATIBILITY_PROJECTION:h1?"PASS":"PENDING",HORIZON2_V006_NATIVE_OWNERSHIP_BOUNDARY:"PASS_SOURCE_DEFINED",horizon2NativeOwnership:h2NativeOwnership,HORIZON2_START_ALLOWED:h1&&horizon1IntegrationSealStatus==="SEALED",blockReason:horizon1IntegrationSealStatus==="SEALED"?null:"HORIZON1_EXECUTION_PLANE_INTEGRATION_SEAL_REQUIRED"});
+}

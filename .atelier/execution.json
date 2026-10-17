@@ -1,0 +1,8 @@
+{
+  "schemaVersion":"1",
+  "environmentProfile":{"os":"linux","arch":"x64","node":">=22.13.0"},
+  "taskProfiles":{
+    "unit":{"minCpu":1,"minMemoryMiB":512,"minDiskGiB":2,"executionClass":"LIGHT"},
+    "heavy-ci":{"minCpu":2,"minMemoryMiB":4096,"minDiskGiB":20,"requiresChromium":true,"requiresNetwork":true,"executionClass":"HEAVY"}
+  }
+}

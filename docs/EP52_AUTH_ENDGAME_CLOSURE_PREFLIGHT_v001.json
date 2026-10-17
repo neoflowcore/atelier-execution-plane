@@ -1,0 +1,19 @@
+{
+  "schemaId":"EP_AUTH_ENDGAME_CLOSURE_PREFLIGHT_V1",
+  "status":"PASS",
+  "EXECUTION_PLANE_CREDENTIAL_INDEPENDENT_WORK_EXHAUSTED":true,
+  "NO_NEXT_CREDENTIAL_INDEPENDENT_WORK":true,
+  "requiresLiveAuth":true,
+  "requiresPaidCompute":true,
+  "requirements":[
+    {"id":"digitalocean-live","provider":"DIGITALOCEAN","requiresAuth":true,"requiresPaidCompute":true,"costCapState":"USER_AUTHORITY_REQUIRED_AT_ENDGAME","ttlOrLease":"REQUIRED"},
+    {"id":"github-jit-live","provider":"GITHUB","requiresAuth":true,"requiresPaidCompute":false,"costCapState":"NO_NEW_PAID_RESOURCE_BY_EXECUTION_PLANE","ttlOrLease":"EPHEMERAL_REGISTRATION"},
+    {"id":"vmware-live","provider":"VMWARE","requiresAuth":true,"requiresPaidCompute":false,"costCapState":"NOT_APPLICABLE_OR_EXISTING_INFRA","ttlOrLease":"REQUIRED"}
+  ],
+  "missingSourceNodes":[],
+  "authInteractionBudget":1,
+  "perProviderMicroAuth":false,
+  "preflightDigest":"d2e32bfa6648fcac7fcdb08596cf72f07ac39c3bc823cce243a225fa4358735c",
+  "sourceVerification":{"runtimeDependencyLock":"PASS","securityLint":"PASS","semanticTestSuite":"PASS"},
+  "deferredLiveWork":["EP52-P19_AUTH_ENDGAME","EP52-P20_LIVE_PROVIDER_TRANSPORT","EP52-P21_REAL_WORKLOAD","EP52-P22_BILLING_CLEANUP_FINAL","EP52-P23_FINAL_FREEZE","EP52-P24_FINAL_DEVELOPMENT_SEAL","COMPATIBILITY_REBIND","INTEGRATION_LIVE","ADDITIVE_INTEGRATION_SEAL"]
+}

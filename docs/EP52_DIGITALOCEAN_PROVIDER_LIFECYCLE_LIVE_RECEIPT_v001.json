@@ -1,0 +1,61 @@
+{
+  "schemaId": "EP52_DIGITALOCEAN_PROVIDER_LIFECYCLE_LIVE_RECEIPT_V1",
+  "sourceAnchor": {
+    "branch": "ep52-h1-recovery",
+    "head": "2c4a8c6dd26354a3ffa48835391842d04ae4cb7b",
+    "tree": "bee10e9fbc306d43253afcfde06b5a86819753c9"
+  },
+  "provider": "DIGITALOCEAN",
+  "surface": "FIRST_PARTY_OFFICIAL_CONNECTOR",
+  "connectionState": "CONNECTED",
+  "accountIdentityReadback": "PASS",
+  "accountStatus": "active",
+  "preflight": {
+    "dropletInventoryCount": 0,
+    "region": "sgp1",
+    "regionAvailable": true,
+    "image": "ubuntu-24-04-x64",
+    "selectedSize": "s-2vcpu-4gb",
+    "vcpus": 2,
+    "memoryMiB": 4096,
+    "diskGiB": 80,
+    "priceHourlyUsd": 0.03571,
+    "projectedThirtyMinuteComputeUsd": 0.017855,
+    "perResourceCostCapUsd": 0.10,
+    "withinCostCap": true
+  },
+  "lifecycleQualification": {
+    "createCompleted": true,
+    "activeAuthoritativeReadback": true,
+    "ownershipTagsReadback": true,
+    "attachedVolumeCount": 0,
+    "deleteCompleted": true,
+    "ownedTagInventoryAfterDelete": 0,
+    "eventualConsistencyFinalGet": "404_NOT_FOUND",
+    "status": "PASS"
+  },
+  "cleanup": {
+    "projectScopedActivePaidCompute": 0,
+    "projectScopedOrphanedBillableResource": 0,
+    "projectScopedBillableResidue": 0,
+    "foreignPreexistingAccountResourcesMutated": false,
+    "status": "PASS_PROJECT_SCOPED_ZERO"
+  },
+  "executionSurface": {
+    "remoteCommandExecution": false,
+    "cloudInitOrUserDataCreate": false,
+    "codexWorkspaceExecution": false,
+    "selfHostedRunnerBootstrap": false,
+    "manualSshNormalPath": false,
+    "thirdPartyPaidBrowserAgent": false,
+    "DIGITALOCEAN_DIRECT_WORKER": "PENDING_EXECUTION_SURFACE",
+    "DIGITALOCEAN_GITHUB_SELF_HOSTED_JIT": "PENDING_EXECUTION_SURFACE"
+  },
+  "firstAttempt": {
+    "classification": "CLEANUP_ONLY_NOT_PROVIDER_READY",
+    "reason": "DELETE_RACED_CREATE_BEFORE_READY",
+    "cleanupCompleted": true,
+    "finalGet": "404_NOT_FOUND"
+  },
+  "finalVerdict": "PROVIDER_LIFECYCLE_PASS_TRANSPORT_PENDING"
+}

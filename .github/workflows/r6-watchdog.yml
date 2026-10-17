@@ -1,0 +1,92 @@
+name: r6-independent-controller-reference
+on:
+  pull_request:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ep52-r6-independent-controller-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  r6_independent_watchdog:
+    if: ${{ github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Start separate controller and persist live arm
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+        run: node scripts/start-r6-controller-reference.mjs
+      - name: Publish arm while controller process is monitoring
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-armed-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: artifacts/ep52/r6-independent-controller/envelope.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Wait for controller monitoring result
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+          EP52_REFERENCE_KILL_CONTROLLER: 'true'
+        run: node scripts/wait-r6-controller-reference.mjs
+      - name: Preserve sanitized controller evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-controller-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ep52/r6-independent-controller/armed.json
+            artifacts/ep52/r6-independent-controller/isolation.json
+            artifacts/ep52/r6-independent-controller/envelope.json
+            artifacts/ep52/r6-independent-controller/receipt.json
+            artifacts/ep52/r6-independent-controller/failure.json
+            artifacts/ep52/r6-independent-controller/lease.json
+            artifacts/ep52/r6-independent-controller/recovery.json
+          if-no-files-found: error
+          retention-days: 7
+
+  r6_replacement_controller:
+    needs: r6_independent_watchdog
+    if: ${{ github.head_ref == 'ep52-h1-recovery' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+      - name: Restore controller checkpoint from immutable artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ep52-r6-controller-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-replacement-input
+      - name: Reconcile the expired lease on a different runner
+        env:
+          EP52_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_READ_CREDENTIAL: ${{ github.token }}
+          ATELIER_R6_DO_TOKEN: ${{ secrets.ATELIER_R6_DO_TOKEN }}
+        run: node scripts/run-r6-replacement-controller-reference.mjs
+      - name: Preserve replacement reconciliation
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ep52-r6-replacement-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/ep52/r6-replacement-controller
+          if-no-files-found: error
+          retention-days: 7

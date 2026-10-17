@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "cloudflare-runtime-power",
+  "version": "0.1.0",
+  "description": "Cloudflare account and resource discovery with bound inspection plans; v001 workflow is read-only.",
+  "author": {
+    "name": "neoflowcore"
+  },
+  "repository": "https://github.com/neoflowcore/atelier-execution-plane",
+  "keywords": [
+    "cloudflare",
+    "runtime",
+    "inspection"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Cloudflare Runtime Power",
+        "shortDescription": "Cloudflare 계정·자원 조회와 안전한 대상 선택",
+        "longDescription": "조회 전용 v001 워크플로입니다. 공식 MCP는 쓰기 도구도 제공하며 이 버전은 자동 배포·삭제·키 발급을 구현하지 않습니다.",
+        "developerName": "neoflowcore",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "defaultPrompt": [
+          "Cloudflare Runtime Power로 내 계정의 자원 목록을 변경 없이 확인해줘."
+        ]
+      }
+    }
+  }
+}

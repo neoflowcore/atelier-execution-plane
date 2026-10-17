@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"ATELIER_PROJECT_EXECUTION_DECLARATION_V1",
+  "type":"object",
+  "required":["schemaVersion","environmentProfile","taskProfiles"],
+  "properties":{
+    "schemaVersion":{"const":"1"},
+    "environmentProfile":{"type":"object","properties":{"os":{"type":"string"},"arch":{"type":"string"},"node":{"type":"string"}},"additionalProperties":true},
+    "taskProfiles":{"type":"object","additionalProperties":{"type":"object","properties":{"minCpu":{"type":"integer","minimum":1},"minMemoryMiB":{"type":"integer","minimum":1},"minDiskGiB":{"type":"integer","minimum":1},"requiresChromium":{"type":"boolean"},"requiresNetwork":{"type":"boolean"},"executionClass":{"type":"string"}},"additionalProperties":true}}
+  },
+  "additionalProperties":true
+}
